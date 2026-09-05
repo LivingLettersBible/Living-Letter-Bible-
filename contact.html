@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Living Letters</title>
+<meta name="description" content="Get in touch with Living Letters, or subscribe to our weekly newsletter.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='5' width='20' height='14' rx='2' fill='%23b3452a'/%3E%3Cpath d='M3 6l9 7 9-7' stroke='%23faf5ea' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="logo">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M3 6l9 7 9-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Living Letters
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="reading-plans.html">Reading Plans</a></li>
+      <li><a href="devotionals.html">Devotionals</a></li>
+      <li><a href="resources.html">Resources</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="reading-plans.html" class="btn btn-primary">Start a Plan</a>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+</header>
+
+<main>
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="eyebrow">Contact</span>
+      <h1>We'd love to hear from you.</h1>
+      <p class="lede">Questions, feedback, or an idea for a reading plan you wish existed &mdash; send it our way.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="form-card">
+        <h3>Send a Message</h3>
+        <form data-demo-form>
+          <div class="field">
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+          </div>
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Send Message</button>
+          <div class="form-success">Thanks for reaching out &mdash; we'll get back to you soon.</div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-alt" id="newsletter">
+    <div class="container">
+      <div class="newsletter-band">
+        <h2>Subscribe to the Weekly Word</h2>
+        <p class="lede">One short email each Sunday: a verse, a brief reflection, and what's opening next in the reading plans.</p>
+        <form class="form-inline" data-demo-form>
+          <label class="sr-only" for="newsletter-email">Email address</label>
+          <input type="email" id="newsletter-email" placeholder="you@example.com" required>
+          <button type="submit" class="btn btn-primary">Subscribe</button>
+        </form>
+        <p class="form-note">No spam. Unsubscribe any time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container text-center">
+      <span class="eyebrow">Prefer email?</span>
+      <h2>Reach us directly</h2>
+      <p class="lede" style="margin-left:auto;margin-right:auto;">
+        <a href="mailto:hello@livingletters.example">hello@livingletters.example</a>
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M3 6l9 7 9-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Living Letters
+        </a>
+        <p>A home for reading Scripture together &mdash; reading plans, devotionals, and resources for letting God's word take root.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="reading-plans.html">Reading Plans</a></li>
+          <li><a href="devotionals.html">Devotionals</a></li>
+          <li><a href="resources.html">Resources</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>About</h4>
+        <ul>
+          <li><a href="about.html">Our Story</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> Living Letters.</span>
+      <span>&ldquo;Your word is a lamp for my feet, a light on my path.&rdquo; &mdash; Psalm 119:105</span>
+    </div>
+  </div>
+</footer>
+
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<script src="js/main.js"></script>
+</body>
+</html>
