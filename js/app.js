@@ -33,11 +33,19 @@
   const progressKey = (id) => 'lc.p.' + id;
 
   let customs = store.get(CUSTOM_KEY, []);
-  const allPictures = () => [...customs, ...window.PICTURES];
+  const LINE_ART = window.LINE_ART || [];
+  const allPictures = () => [...customs, ...LINE_ART, ...window.PICTURES];
   const findPicture = (id) => allPictures().find((p) => p.id === id);
+
+  // A picture is either a pixel grid (cells) or line art with fillable regions.
+  // Progress is stored as the order in which units (cells or regions) were painted.
+  const isLines = (pic) => pic.kind === 'lines';
+  const unitCount = (pic) => (isLines(pic) ? pic.regions.length : pic.cells.length);
+  const unitColor = (pic, i) => (isLines(pic) ? pic.regions[i][3] : pic.cells[i]);
   const loadOrder = (pic) => {
     const order = store.get(progressKey(pic.id), []);
-    return Array.isArray(order) ? order.filter((i) => i >= 0 && i < pic.cells.length) : [];
+    const n = unitCount(pic);
+    return Array.isArray(order) ? order.filter((i) => i >= 0 && i < n) : [];
   };
 
   // ---------- Colour helpers ----------
@@ -80,9 +88,94 @@
   }
 
   function paintedMask(pic, order) {
-    const mask = new Uint8Array(pic.cells.length);
+    const mask = new Uint8Array(unitCount(pic));
     order.forEach((i) => (mask[i] = 1));
     return mask;
+  }
+
+  // ---------- Line art: decode region map and ink layer (once per picture) ----------
+
+  const PAPER = [255, 255, 255];
+  const TARGET = [217, 211, 204]; // unpainted regions of the selected color
+
+  function b64Bytes(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function prepareLines(pic) {
+    if (!pic._ready) {
+      pic._ready = (async () => {
+        const stream = new Blob([b64Bytes(pic.labels)]).stream().pipeThrough(new DecompressionStream('deflate'));
+        const buf = await new Response(stream).arrayBuffer();
+        const labels = new Uint16Array(buf);
+        // Group pixel indices by region so a region can be filled without scanning the image.
+        const R = pic.regions.length;
+        const starts = new Int32Array(R + 2);
+        for (let i = 0; i < labels.length; i++) starts[labels[i] + 1]++;
+        for (let k = 1; k < starts.length; k++) starts[k] += starts[k - 1];
+        const fillPos = starts.slice();
+        const pix = new Int32Array(labels.length);
+        for (let i = 0; i < labels.length; i++) pix[fillPos[labels[i]]++] = i;
+        const ink = new Image();
+        ink.src = pic.lines;
+        await ink.decode();
+        pic._rt = { labels, starts, pix, ink };
+      })();
+      pic._ready.catch(() => (pic._ready = null));
+    }
+    return pic._ready;
+  }
+
+  // Region k (0-based) is label k + 1 in the map.
+  function fillRegion(data, pic, k, rgb) {
+    const { starts, pix } = pic._rt;
+    for (let p = starts[k + 1], end = starts[k + 2]; p < end; p++) {
+      const o = pix[p] * 4;
+      data[o] = rgb[0];
+      data[o + 1] = rgb[1];
+      data[o + 2] = rgb[2];
+    }
+  }
+
+  // Full-size canvas with painted regions filled (no ink).
+  function linesFillCanvas(pic, painted, selected) {
+    const cv = document.createElement('canvas');
+    cv.width = pic.w;
+    cv.height = pic.h;
+    const cx = cv.getContext('2d');
+    const img = cx.createImageData(pic.w, pic.h);
+    img.data.fill(255);
+    const colors = pic.palette.map(hexToRgb);
+    pic.regions.forEach((r, k) => {
+      if (!painted || painted[k]) fillRegion(img.data, pic, k, colors[r[3]]);
+      else if (r[3] === selected) fillRegion(img.data, pic, k, TARGET);
+    });
+    cx.putImageData(img, 0, 0);
+    return { cv, cx, img };
+  }
+
+  // Draw a line-art picture (fills + ink) into a canvas of the given width.
+  async function drawLines(canvas, pic, painted, width) {
+    await prepareLines(pic);
+    const scale = width / pic.w;
+    canvas.width = Math.round(pic.w * scale);
+    canvas.height = Math.round(pic.h * scale);
+    const cx = canvas.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    cx.drawImage(linesFillCanvas(pic, painted, -1).cv, 0, 0, canvas.width, canvas.height);
+    cx.drawImage(pic._rt.ink, 0, 0, canvas.width, canvas.height);
+  }
+
+  function drawThumb(canvas, pic, painted) {
+    if (isLines(pic)) {
+      canvas.classList.add('smooth');
+      drawLines(canvas, pic, painted, 360).catch(() => {});
+    } else {
+      drawPixels(canvas, pic, painted);
+    }
   }
 
   const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>';
@@ -90,7 +183,7 @@
 
   // ---------- Gallery ----------
 
-  const CATEGORIES = ['All', 'Faith', 'Nature', 'Animals', 'Love', 'My Photos'];
+  const CATEGORIES = ['All', 'Hearts', 'Faith', 'Nature', 'Animals', 'Love', 'My Photos'];
   let activeTab = store.get('lc.tab', 'All');
   if (!CATEGORIES.includes(activeTab)) activeTab = 'All';
 
@@ -115,18 +208,18 @@
   }
 
   function renderDaily() {
-    const pics = window.PICTURES;
+    const pics = LINE_ART.length ? LINE_ART : window.PICTURES;
     const day = Math.floor(Date.now() / 86400000);
     const pic = pics[day % pics.length];
     const order = loadOrder(pic);
-    const pct = Math.round((order.length / pic.cells.length) * 100);
+    const pct = Math.round((order.length / unitCount(pic)) * 100);
     const el = $('#daily');
     el.innerHTML = '';
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'daily';
     const cv = document.createElement('canvas');
-    drawPixels(cv, pic, null);
+    drawThumb(cv, pic, null);
     const text = document.createElement('div');
     text.innerHTML = '<small>Picture of the day</small><h2></h2><span class="btn"></span>';
     text.querySelector('h2').textContent = pic.title;
@@ -153,15 +246,15 @@
     }
     list.forEach((pic) => {
       const order = loadOrder(pic);
-      const pct = Math.floor((order.length / pic.cells.length) * 100);
-      const done = order.length === pic.cells.length;
+      const pct = Math.floor((order.length / unitCount(pic)) * 100);
+      const done = order.length === unitCount(pic);
       const card = document.createElement('div');
       card.className = 'card';
       card.tabIndex = 0;
       card.setAttribute('role', 'button');
       card.setAttribute('aria-label', `${pic.title}, ${done ? 'completed' : pct + '% colored'}`);
       const cv = document.createElement('canvas');
-      drawPixels(cv, pic, paintedMask(pic, order));
+      drawThumb(cv, pic, paintedMask(pic, order));
       const meta = document.createElement('div');
       meta.className = 'meta';
       meta.innerHTML = '<strong></strong><span></span>';
@@ -247,14 +340,23 @@
   let rafId = 0;
   let saveTimer = 0;
 
+  let openToken = 0;
+
   function openEditor(pic) {
     closeEditor();
+    const token = ++openToken;
+    if (isLines(pic) && !pic._rt) {
+      prepareLines(pic)
+        .then(() => token === openToken && openEditor(pic))
+        .catch(() => ask("This picture couldn't be loaded on this browser. Try updating your browser.").then(() => go('')));
+      return;
+    }
     const order = loadOrder(pic);
     const painted = paintedMask(pic, order);
     const remaining = pic.palette.map(() => 0);
-    pic.cells.forEach((c, i) => {
-      if (!painted[i]) remaining[c]++;
-    });
+    for (let i = 0; i < painted.length; i++) {
+      if (!painted[i]) remaining[unitColor(pic, i)]++;
+    }
     ed = {
       pic,
       order,
@@ -268,8 +370,13 @@
       maxScale: 64,
       panMode: false,
       flash: null,
-      finished: order.length === pic.cells.length,
+      finished: order.length === unitCount(pic),
     };
+    if (isLines(pic)) {
+      const layer = linesFillCanvas(pic, painted, ed.selected);
+      ed.layer = layer;
+      ed.colors = pic.palette.map(hexToRgb);
+    }
     refreshShades();
     $('#gallery').hidden = true;
     $('#editor').hidden = false;
@@ -310,11 +417,16 @@
     requestDraw();
   }
 
+  function fitScale() {
+    const s = Math.min(W / ed.pic.w, H / ed.pic.h) * (isLines(ed.pic) ? 0.96 : 0.92);
+    ed.minScale = s * 0.8;
+    ed.maxScale = isLines(ed.pic) ? Math.max(4, s * 8) : Math.max(56, s * 2);
+    return s;
+  }
+
   function fit() {
     if (!ed) return;
-    const s = Math.min(W / ed.pic.w, H / ed.pic.h) * 0.92;
-    ed.minScale = s * 0.8;
-    ed.maxScale = Math.max(56, s * 2);
+    const s = fitScale();
     ed.scale = s;
     ed.ox = (W - ed.pic.w * s) / 2;
     ed.oy = (H - ed.pic.h * s) / 2;
@@ -349,6 +461,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = ed.stageColor;
     ctx.fillRect(0, 0, W, H);
+    if (isLines(pic)) return drawLinesView(now);
 
     const x0 = Math.max(0, Math.floor(-ox / s));
     const y0 = Math.max(0, Math.floor(-oy / s));
@@ -412,13 +525,67 @@
     }
   }
 
+  function drawLinesView(now) {
+    const { pic, painted, scale: s, ox, oy, selected } = ed;
+    const w = pic.w * s;
+    const h = pic.h * s;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(ed.layer.cv, ox, oy, w, h);
+    ctx.drawImage(pic._rt.ink, ox, oy, w, h);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let k = 0; k < pic.regions.length; k++) {
+      if (painted[k]) continue;
+      const [lx, ly, r, c] = pic.regions[k];
+      const rs = r * s;
+      if (rs < 5.5) continue;
+      const x = ox + lx * s;
+      const y = oy + ly * s;
+      if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+      const size = Math.min(22, Math.max(8, rs * 1.05));
+      ctx.font = `${c === selected ? 700 : 500} ${size}px system-ui, sans-serif`;
+      ctx.fillStyle = c === selected ? '#1f1b17' : '#8a8178';
+      ctx.fillText(String(c + 1), x, y + size * 0.04);
+    }
+
+    if (ed.flash) {
+      const t = (now || performance.now()) - ed.flash.start;
+      if (t > 1400) {
+        ed.flash = null;
+      } else {
+        const [lx, ly, r] = pic.regions[ed.flash.i];
+        const pulse = 0.5 + 0.5 * Math.sin(t / 90);
+        ctx.strokeStyle = `rgba(255, 122, 89, ${0.4 + 0.6 * pulse})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(ox + lx * s, oy + ly * s, Math.max(12, r * s) + 4 + pulse * 6, 0, Math.PI * 2);
+        ctx.stroke();
+        requestDraw();
+      }
+    }
+  }
+
+  // Repaint one region in the fill layer.
+  function updateRegion(k) {
+    const c = ed.pic.regions[k][3];
+    const rgb = ed.painted[k] ? ed.colors[c] : c === ed.selected ? TARGET : PAPER;
+    fillRegion(ed.layer.img.data, ed.pic, k, rgb);
+  }
+
+  function flushLayer() {
+    ed.layer.cx.putImageData(ed.layer.img, 0, 0);
+    requestDraw();
+  }
+
   // ---------- Palette & progress ----------
 
   function renderPalette() {
     const pal = $('#palette');
     pal.innerHTML = '';
     const totals = ed.pic.palette.map(() => 0);
-    ed.pic.cells.forEach((c) => totals[c]++);
+    for (let i = 0; i < ed.painted.length; i++) totals[unitColor(ed.pic, i)]++;
     ed.totals = totals;
     ed.pic.palette.forEach((color, c) => {
       const b = document.createElement('button');
@@ -451,29 +618,38 @@
   }
 
   function select(c) {
+    const prev = ed.selected;
     ed.selected = c;
+    if (isLines(ed.pic) && prev !== c) {
+      ed.pic.regions.forEach((r, k) => {
+        if (!ed.painted[k] && (r[3] === prev || r[3] === c)) updateRegion(k);
+      });
+      flushLayer();
+    }
     updateSelection();
     requestDraw();
   }
 
   function updateProgress() {
-    const pct = Math.floor((ed.order.length / ed.pic.cells.length) * 100);
+    const pct = Math.floor((ed.order.length / unitCount(ed.pic)) * 100);
     $('#edPct').textContent = pct + '%';
     $('#edMeter').style.width = pct + '%';
   }
 
   // ---------- Painting ----------
 
+  // The paintable unit under a screen point: a grid cell, or a line-art region.
   function cellAt(x, y) {
     const cx = Math.floor((x - ed.ox) / ed.scale);
     const cy = Math.floor((y - ed.oy) / ed.scale);
     if (cx < 0 || cy < 0 || cx >= ed.pic.w || cy >= ed.pic.h) return -1;
-    return cy * ed.pic.w + cx;
+    const i = cy * ed.pic.w + cx;
+    return isLines(ed.pic) ? ed.pic._rt.labels[i] - 1 : i;
   }
 
   function paintCell(i, fromTap) {
     if (i < 0 || ed.painted[i]) return;
-    const c = ed.pic.cells[i];
+    const c = unitColor(ed.pic, i);
     if (c !== ed.selected) {
       if (fromTap) toast(ed.remaining[c] ? `That's color ${c + 1}` : '');
       return;
@@ -481,6 +657,10 @@
     ed.painted[i] = 1;
     ed.order.push(i);
     ed.remaining[c]--;
+    if (isLines(ed.pic)) {
+      updateRegion(i);
+      flushLayer();
+    }
     updateSwatch(c);
     updateProgress();
     scheduleSave();
@@ -497,7 +677,7 @@
   }
 
   function colorDone(c) {
-    if (ed.order.length === ed.pic.cells.length) {
+    if (ed.order.length === unitCount(ed.pic)) {
       ed.finished = true;
       flushSave();
       setTimeout(() => ed && finish(), 350);
@@ -527,15 +707,22 @@
 
   function hint() {
     let i = -1;
-    for (let k = 0; k < ed.pic.cells.length; k++) {
-      if (!ed.painted[k] && ed.pic.cells[k] === ed.selected) {
+    for (let k = 0; k < ed.painted.length; k++) {
+      if (!ed.painted[k] && unitColor(ed.pic, k) === ed.selected) {
         i = k;
         break;
       }
     }
     if (i < 0) i = ed.painted.indexOf(0);
     if (i < 0) return;
-    if (ed.pic.cells[i] !== ed.selected) select(ed.pic.cells[i]);
+    if (unitColor(ed.pic, i) !== ed.selected) select(unitColor(ed.pic, i));
+    if (isLines(ed.pic)) {
+      const [lx, ly, r] = ed.pic.regions[i];
+      const target = Math.min(ed.maxScale, Math.max(ed.scale, 16 / Math.max(r, 1)));
+      animateView(target, W / 2 - lx * target, H / 2 - ly * target);
+      ed.flash = { i, start: performance.now() + 300 };
+      return;
+    }
     const target = Math.min(ed.maxScale, Math.max(ed.scale, 30));
     const cx = (i % ed.pic.w) + 0.5;
     const cy = Math.floor(i / ed.pic.w) + 0.5;
@@ -590,7 +777,10 @@
     if (pointers.size > 2) return;
 
     const pan = ed.panMode || spaceDown || e.button === 1 || e.button === 2;
-    if (pan) {
+    if (isLines(ed.pic) && !pan) {
+      // Tap fills a region; dragging moves the picture.
+      gesture = { type: 'tap', x: p.x, y: p.y, sx: p.x, sy: p.y };
+    } else if (pan) {
       gesture = { type: 'pan', x: p.x, y: p.y };
     } else {
       // Touch waits a beat so the first finger of a pinch doesn't paint.
@@ -611,6 +801,16 @@
       ed.oy += now.cy - gesture.cy;
       zoomAt(now.cx, now.cy, now.dist / gesture.dist);
       Object.assign(gesture, now);
+    } else if (gesture.type === 'tap') {
+      if (Math.hypot(p.x - gesture.sx, p.y - gesture.sy) > 8) {
+        gesture.type = 'pan';
+        ed.ox += p.x - gesture.x;
+        ed.oy += p.y - gesture.y;
+        gesture.x = p.x;
+        gesture.y = p.y;
+        clampView();
+        requestDraw();
+      }
     } else if (gesture.type === 'pan') {
       ed.ox += p.x - gesture.x;
       ed.oy += p.y - gesture.y;
@@ -635,6 +835,9 @@
     pointers.delete(e.pointerId);
     if (gesture && gesture.type === 'paint' && gesture.pending && e.type === 'pointerup') {
       paintCell(cellAt(gesture.x, gesture.y), true);
+    }
+    if (gesture && gesture.type === 'tap' && e.type === 'pointerup' && !pointers.size) {
+      paintCell(cellAt(gesture.sx, gesture.sy), true);
     }
     // After a pinch, the remaining finger does nothing until lifted.
     gesture = pointers.size && gesture && gesture.type === 'pinch' ? { type: 'idle' } : pointers.size ? gesture : null;
@@ -788,6 +991,8 @@
     const order = ed.order.slice();
     const cv = $('#replayCanvas');
     cancelAnimationFrame(replayTimer);
+    if (isLines(pic)) return replayLines(pic, order, cv);
+    cv.classList.remove('smooth');
     const mask = new Uint8Array(pic.cells.length);
     const cx = cv.getContext('2d');
     drawPixels(cv, pic, mask);
@@ -808,6 +1013,28 @@
     replayTimer = requestAnimationFrame(step);
   }
 
+  function replayLines(pic, order, cv) {
+    const scale = Math.min(1, 800 / pic.w);
+    cv.width = Math.round(pic.w * scale);
+    cv.height = Math.round(pic.h * scale);
+    cv.classList.add('smooth');
+    const out = cv.getContext('2d');
+    const layer = linesFillCanvas(pic, new Uint8Array(pic.regions.length), -1);
+    const colors = pic.palette.map(hexToRgb);
+    const duration = 3200;
+    const start = performance.now();
+    let shown = 0;
+    const step = (now) => {
+      const target = Math.min(order.length, Math.ceil(((now - start) / duration) * order.length));
+      for (; shown < target; shown++) fillRegion(layer.img.data, pic, order[shown], colors[pic.regions[order[shown]][3]]);
+      layer.cx.putImageData(layer.img, 0, 0);
+      out.drawImage(layer.cv, 0, 0, cv.width, cv.height);
+      out.drawImage(pic._rt.ink, 0, 0, cv.width, cv.height);
+      if (shown < order.length) replayTimer = requestAnimationFrame(step);
+    };
+    replayTimer = requestAnimationFrame(step);
+  }
+
   $('#doneDlg').addEventListener('click', (e) => {
     const act = e.target.dataset.act;
     if (act === 'replay') replay();
@@ -819,16 +1046,20 @@
   });
   $('#doneDlg').addEventListener('close', () => cancelAnimationFrame(replayTimer));
 
-  function downloadPng(pic, order) {
-    const cell = Math.max(8, Math.floor(1024 / Math.max(pic.w, pic.h)));
-    const small = document.createElement('canvas');
-    drawPixels(small, pic, paintedMask(pic, order));
+  async function downloadPng(pic, order) {
     const big = document.createElement('canvas');
-    big.width = pic.w * cell;
-    big.height = pic.h * cell;
-    const bx = big.getContext('2d');
-    bx.imageSmoothingEnabled = false;
-    bx.drawImage(small, 0, 0, big.width, big.height);
+    if (isLines(pic)) {
+      await drawLines(big, pic, paintedMask(pic, order), pic.w);
+    } else {
+      const cell = Math.max(8, Math.floor(1024 / Math.max(pic.w, pic.h)));
+      const small = document.createElement('canvas');
+      drawPixels(small, pic, paintedMask(pic, order));
+      big.width = pic.w * cell;
+      big.height = pic.h * cell;
+      const bx = big.getContext('2d');
+      bx.imageSmoothingEnabled = false;
+      bx.drawImage(small, 0, 0, big.width, big.height);
+    }
     big.toBlob((blob) => {
       if (!blob) return;
       const a = document.createElement('a');
@@ -1017,9 +1248,8 @@
     resize();
     ed.ox += (W - oldW) / 2;
     ed.oy += (H - oldH) / 2;
-    const s = Math.min(W / ed.pic.w, H / ed.pic.h) * 0.92;
-    ed.minScale = s * 0.8;
-    ed.maxScale = Math.max(56, s * 2);
+    fitScale();
+    ed.scale = Math.min(ed.maxScale, Math.max(ed.minScale, ed.scale));
     clampView();
   }).observe(stage);
 

@@ -7,7 +7,9 @@ It's a plain static site: no build step, no dependencies, no server code.
 
 ## Features
 
-- **12 built-in pictures** in categories: Faith (Sunrise Cross, Dove of Peace, Noah's Rainbow,
+- **Line-art hearts:** detailed coloring-book pages (Songbird, Harvest, Mountain, Ocean and Lace hearts).
+  Tap a numbered area to fill it, drag to move around, and pinch to zoom in on small areas
+- **12 pixel-style pictures** in categories: Faith (Sunrise Cross, Dove of Peace, Noah's Rainbow,
   Ichthys Fish, Star of Bethlehem), Nature, Animals and Love
 - **Picture of the day** on the home screen
 - **Tap or drag to paint.** Cells of the selected color are highlighted, and numbers appear once you zoom in
@@ -36,9 +38,23 @@ Upload the folder to any static host: GitHub Pages (Settings → Pages → deplo
 Netlify, Vercel or Cloudflare Pages. On a phone, open the site and choose **Add to Home Screen**
 to install it like an app.
 
-## Add your own pictures
+## Add line-art pages
 
-Pictures live in [`js/pictures.js`](js/pictures.js) and are drawn with a small shape API
+1. Save a clean black-and-white line drawing as a PNG in `art/hearts/` (roughly square, closed outlines).
+2. Add it to the `PICS` list in [`tools/build_line_art.py`](tools/build_line_art.py) with a title and a color
+   plan: a function that sorts each area into a group (by position and size) and a list of shades per group.
+3. Rebuild the data:
+
+```sh
+pip install pillow numpy scipy
+PREVIEW_DIR=/tmp python3 tools/build_line_art.py   # also writes finished-color previews to /tmp
+```
+
+This regenerates `js/hearts.js`.
+
+## Add pixel pictures
+
+Pixel pictures live in [`js/pictures.js`](js/pictures.js) and are drawn with a small shape API
 (`rect`, `circle`, `ellipse`, `poly`, `line`, `ring`, `where`, `px`) on a grid:
 
 ```js
@@ -57,6 +73,9 @@ art('my-id', 'My Picture', 'Nature', 32,
 | --- | --- |
 | `index.html` | App shell (gallery, editor, dialogs) |
 | `css/style.css` | Styles, including dark mode |
-| `js/pictures.js` | Built-in coloring pages |
+| `js/pictures.js` | Built-in pixel pictures |
+| `js/hearts.js` | Line-art pages (generated, don't edit by hand) |
+| `art/hearts/` | Source line-art images |
+| `tools/build_line_art.py` | Turns line art into numbered, colorable areas |
 | `js/app.js` | Gallery, painting canvas, zoom/pan, saving, photo import |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline support and installable-app metadata |

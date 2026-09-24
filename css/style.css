@@ -143,6 +143,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   background: #fff;
   flex: none;
 }
+.daily canvas.smooth,
+.card canvas.smooth,
+.replay.smooth { image-rendering: auto; background: #fff; }
 .daily small { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; opacity: 0.7; font-size: 0.72rem; }
 .daily h2 { margin: 2px 0 8px; font-size: 1.25rem; }
 .daily .btn { background: #3b2a20; color: #fff; border: 0; padding: 7px 14px; }
