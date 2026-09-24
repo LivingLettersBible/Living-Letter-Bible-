@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Living Colors</title>
+  <meta name="description" content="A relaxing color-by-number app: pick a color, fill the numbered cells, and watch the picture come to life.">
+  <meta name="theme-color" content="#ff7a59">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Living Colors">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Gallery -->
+  <div id="gallery" class="view">
+    <header class="top">
+      <div class="brand">
+        <img src="icons/icon.svg" alt="" width="40" height="40">
+        <div>
+          <h1>Living Colors</h1>
+          <p>Color by number</p>
+        </div>
+      </div>
+      <button id="importBtn" class="btn primary" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Photo
+      </button>
+    </header>
+    <section id="daily" aria-label="Picture of the day"></section>
+    <nav id="tabs" class="tabs" aria-label="Categories"></nav>
+    <main id="grid" class="grid"></main>
+  </div>
+
+  <!-- Editor -->
+  <div id="editor" class="view" hidden>
+    <header class="bar">
+      <button id="backBtn" class="icon" type="button" aria-label="Back to gallery">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="bar-title">
+        <strong id="edTitle"></strong>
+        <div class="meter" aria-hidden="true"><span id="edMeter"></span></div>
+      </div>
+      <span id="edPct" class="pct">0%</span>
+      <button id="hintBtn" class="icon" type="button" aria-label="Find a cell (H)" title="Find a cell (H)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      </button>
+      <button id="panBtn" class="icon" type="button" aria-pressed="false" aria-label="Move mode (hold Space)" title="Move mode (hold Space)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>
+      </button>
+      <button id="fitBtn" class="icon" type="button" aria-label="Fit to screen (0)" title="Fit to screen (0)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+      <div class="more">
+        <button id="moreBtn" class="icon" type="button" aria-label="More" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+        </button>
+        <div id="menu" class="menu" role="menu" hidden>
+          <button type="button" role="menuitem" data-act="replay">Watch replay</button>
+          <button type="button" role="menuitem" data-act="download">Download image</button>
+          <button type="button" role="menuitem" data-act="restart" class="danger">Restart picture</button>
+        </div>
+      </div>
+    </header>
+    <div id="stage" class="stage">
+      <canvas id="canvas" aria-label="Coloring canvas"></canvas>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
+    <div id="palette" class="palette" role="listbox" aria-label="Colors"></div>
+  </div>
+
+  <!-- Finished dialog -->
+  <dialog id="doneDlg" class="dlg">
+    <h2 id="doneTitle">Beautiful!</h2>
+    <p class="muted">You finished this picture.</p>
+    <canvas id="replayCanvas" class="replay"></canvas>
+    <div class="actions">
+      <button type="button" class="btn" data-act="replay">Replay</button>
+      <button type="button" class="btn" data-act="download">Download</button>
+      <button type="button" class="btn primary" data-act="gallery">More pictures</button>
+    </div>
+  </dialog>
+
+  <!-- Import dialog -->
+  <dialog id="importDlg" class="dlg">
+    <form method="dialog" id="importForm">
+      <h2>Color your own photo</h2>
+      <p class="muted">Pick a photo and we'll turn it into a color-by-number page. It stays on your device.</p>
+      <label class="file">
+        <input id="fileInput" type="file" accept="image/*">
+        <span>Choose photo…</span>
+      </label>
+      <canvas id="importPreview" class="replay" hidden></canvas>
+      <div class="field">
+        <label for="detail">Detail <output id="detailOut">40</output></label>
+        <input id="detail" type="range" min="20" max="64" step="2" value="40">
+      </div>
+      <div class="field">
+        <label for="colors">Colors <output id="colorsOut">12</output></label>
+        <input id="colors" type="range" min="4" max="24" value="12">
+      </div>
+      <div class="field">
+        <label for="importTitle">Name</label>
+        <input id="importTitle" type="text" maxlength="40" placeholder="My picture">
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn" value="cancel">Cancel</button>
+        <button type="button" id="importCreate" class="btn primary" disabled>Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="confetti" class="confetti" aria-hidden="true"></div>
+
+  <script src="js/pictures.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
