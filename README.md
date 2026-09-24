@@ -7,13 +7,17 @@ It's a plain static site: no build step, no dependencies, no server code.
 
 ## Features
 
-- **18 line-art pages** in four categories:
+- **25 line-art pages** in five categories:
   - **Gardens:** Mushroom Garden, Wisteria Path, Garden Tea Party, Poppy Garden, Lantern Arbor
   - **Hearts:** Songbird, Harvest, Mountain, Ocean and Lace hearts
-  - **Faith:** Sunrise Cross, Dove of Peace, Noah's Ark, Loaves and Fishes, Star of Bethlehem
+  - **Faith:** Sunrise Cross, Dove of Peace, Noah's Ark, Loaves and Fishes, Star of Bethlehem,
+    Rose Window, Candlelight, Cross Medallion
   - **Animals:** Little Lamb, Ginger Kitty, Butterfly
+  - **Vintage:** Star Medallion, Celtic Ring, Flower Balloon, Greek Plate
 
-  Gardens, Faith and Animals are original drawings made by `tools/draw_pages.py`.
+  Gardens, Animals and the first five Faith pages are original drawings made by `tools/draw_pages.py`.
+  Rose Window, Candlelight, Cross Medallion and the Vintage pages are public-domain (CC0) illustrations
+  from [WelshPixie/vintageart](https://github.com/WelshPixie/vintageart); see `art/vintage/SOURCE.md`.
 - **Picture of the day** on the home screen
 - **Tap to paint.** Areas of the selected color are highlighted, and numbers appear as you zoom in
 - **Zoom and pan:** drag to move, pinch to zoom; scroll-wheel or trackpad pinch on desktop
@@ -63,7 +67,7 @@ takes each area's color from the plan.
 | `index.html` | App shell (gallery, editor, dialogs) |
 | `css/style.css` | Styles, including dark mode |
 | `js/lineart.js` | Line-art pages (generated, don't edit by hand) |
-| `art/hearts/`, `art/drawn/` | Source line art (drawn pages also have SVG sources and color plans) |
+| `art/hearts/`, `art/drawn/`, `art/vintage/` | Source line art (drawn pages also have SVG sources and color plans) |
 | `tools/build_line_art.py` | Turns line art into numbered, colorable areas |
 | `tools/draw_pages.py`, `tools/render_svg.js` | Draw and render the original pages |
 | `js/app.js` | Gallery, painting canvas, zoom/pan, saving, photo import |

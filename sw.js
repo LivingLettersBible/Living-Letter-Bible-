@@ -1,6 +1,6 @@
 // Network-first with a cache fallback, so the app works offline after one visit
 // and always picks up new versions when online.
-const CACHE = 'living-colors-v5';
+const CACHE = 'living-colors-v6';
 const SHELL = [
   './',
   'index.html',

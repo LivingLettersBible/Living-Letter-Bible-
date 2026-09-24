@@ -146,7 +146,7 @@
 
   // ---------- Gallery ----------
 
-  const CATEGORIES = ['All', 'Gardens', 'Hearts', 'Faith', 'Animals'];
+  const CATEGORIES = ['All', 'Gardens', 'Hearts', 'Faith', 'Animals', 'Vintage'];
   let activeTab = store.get('lc.tab', 'All');
   if (!CATEGORIES.includes(activeTab)) activeTab = 'All';
 

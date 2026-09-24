@@ -5,7 +5,8 @@ specks into their neighbours, picks a number position inside each area, and
 assigns colours. Hearts use a small per-picture art direction (zones by
 position and size, neighbours differ, mirrored areas match on symmetric
 designs). Gardens, Faith and Animals pages are drawn by tools/draw_pages.py and take each area's colour
-from the matching <name>-plan.png render.
+from the matching <name>-plan.png render. Vintage pages (public domain, CC0)
+use per-picture colour plans like the hearts.
 
     pip install pillow numpy scipy
     python3 tools/build_line_art.py
@@ -110,6 +111,85 @@ WAVES = dict(fn=waves, mirror=False, fam={
     'field': ['#f2fbff'], 'leafy': ['#2a9d8f', '#e9c46a', '#f4a261', '#8ab17d'], 'foam': ['#e6f6fb', '#b8e6f2'],
     'sea': ['#03558c', '#0a7bbd', '#48bfe3', '#90dbf4', '#1d3f72', '#5e9fd6']})
 
+# ---------------- vintage public-domain art (art/vintage, CC0) ----------------
+dc = lambda f: math.hypot(f['cx'] - 0.5, f['cy'] - 0.5)
+
+
+def rose_window(f):
+    d, A = dc(f), f['area']
+    if d > 0.43: return 'rim'
+    if d < 0.06: return 'core'
+    if d < 0.17: return 'centre'
+    return 'lobe' if A > 0.004 else 'leaf'
+ROSE = dict(fn=rose_window, mirror=True, dir='vintage', category='Faith', fam={
+    'rim': ['#c9a227', '#7a3b69'], 'core': ['#f2c14e'], 'centre': ['#2a6f97', '#8e2c48', '#61a5c2'],
+    'lobe': ['#1d4e89', '#7a3b69', '#2a6f97'], 'leaf': ['#6a994e', '#a7c957', '#f2c14e']})
+
+
+def star_medallion(f):
+    d, A = dc(f), f['area']
+    if f['depth'] < 0.03: return 'edge'
+    if d < 0.05: return 'core'
+    if A < 0.0006: return 'dot'
+    if d < 0.28: return 'inner'
+    return 'mid' if d < 0.4 else 'point'
+STAR = dict(fn=star_medallion, mirror=True, dir='vintage', category='Vintage', fam={
+    'edge': ['#c9a227', '#8e2c48'], 'core': ['#f2c14e'], 'dot': ['#f2c14e', '#e9d8a6'],
+    'inner': ['#1d4e89', '#2a9d8f', '#8e2c48'], 'mid': ['#e76f51', '#264653', '#2a9d8f'], 'point': ['#8e2c48', '#1d4e89', '#c9a227']})
+
+
+def celtic_ring(f):
+    d, A, x, y = dc(f), f['area'], f['cx'], f['cy']
+    if A > 0.05: return 'field'
+    if d < 0.2 and y < 0.62: return 'knot'
+    if (y > 0.66 and (x < 0.3 or x > 0.7)) or y < 0.15: return 'node'
+    return 'outer' if d > 0.36 else 'ring'
+CELTIC = dict(fn=celtic_ring, mirror=True, dir='vintage', category='Vintage', fam={
+    'field': ['#f6ecd2'], 'knot': ['#2a9d8f', '#e9c46a', '#264653'], 'node': ['#e76f51', '#2a9d8f', '#e9c46a'],
+    'outer': ['#264653', '#c65d3b'], 'ring': ['#c65d3b', '#e9c46a', '#2a9d8f']})
+
+
+def cross_medallion(f):
+    d, A, x, y = dc(f), f['area'], f['cx'], f['cy']
+    if d < 0.25 and (abs(x - 0.5) < 0.06 or abs(y - 0.5) < 0.06): return 'cross'
+    if A > 0.01: return 'field'
+    return 'flower' if A < 0.0015 else 'leaf'
+CROSS = dict(fn=cross_medallion, mirror=True, dir='vintage', category='Faith', fam={
+    'cross': ['#c9a227', '#8e2c48'], 'field': ['#f3ead8'], 'flower': ['#e58ab8', '#9b6fd6', '#f2c14e'], 'leaf': ['#6a994e', '#a7c957']})
+
+
+def greek_plate(f):
+    A, y = f['area'], f['cy']
+    if f['depth'] < 0.035: return 'rim'
+    if 0.58 < y < 0.66: return 'meander'
+    if y > 0.66: return 'fan'
+    return 'ground' if A > 0.02 else 'detail'
+GREEK = dict(fn=greek_plate, mirror=False, dir='vintage', category='Vintage', fam={
+    'rim': ['#c65d3b', '#3b2a20'], 'meander': ['#c65d3b', '#f3e1c0'], 'fan': ['#c65d3b', '#e9b872', '#f3e1c0'],
+    'ground': ['#e9b872'], 'detail': ['#c65d3b', '#2a9d8f', '#f3e1c0']})
+
+
+def candlelight(f):
+    A, x, y = f['area'], f['cx'], f['cy']
+    if 0.33 < x < 0.64 and y < 0.24 and A < 0.003: return 'flame'
+    if 0.33 < x < 0.64 and 0.15 < y < 0.53: return 'candle'
+    if 0.3 < x < 0.7 and 0.52 < y < 0.72: return 'gold'
+    if A > 0.03: return 'panel'
+    if f['depth'] < 0.04: return 'frame'
+    return 'acanthus' if y > 0.72 else 'wreath'
+CANDLE = dict(fn=candlelight, mirror=True, dir='vintage', category='Faith', fam={
+    'flame': ['#ffb703', '#fb8500'], 'candle': ['#fbf3dc', '#f6e7c1'], 'gold': ['#c9a227', '#e0b84a'],
+    'panel': ['#d9c8ec'], 'frame': ['#7a4a8c', '#c9a227'], 'acanthus': ['#6a994e', '#a7c957'], 'wreath': ['#6a994e', '#a7c957', '#3f7d4e']})
+
+
+def balloon(f):
+    A, x, y = f['area'], f['cx'], f['cy']
+    if y < 0.47 and 0.1 < x < 0.9 and A > 0.002 and not (0.15 < y < 0.3): return 'gore'
+    return 'flower' if A < 0.0012 else 'leaf'
+BALLOON = dict(fn=balloon, mirror=True, dir='vintage', category='Vintage', fam={
+    'gore': ['#e76f51', '#f4a261', '#e9c46a', '#2a9d8f', '#a8dadc'], 'flower': ['#e58ab8', '#f6d24a', '#9b6fd6'],
+    'leaf': ['#6a994e', '#a7c957']})
+
 GARDEN = dict(dir='drawn', category='Gardens', plan=True)
 FAITH = dict(dir='drawn', category='Faith', plan=True)
 ANIMALS = dict(dir='drawn', category='Animals', plan=True)
@@ -128,6 +208,13 @@ PICS = [
     ('animal-lamb', 'Little Lamb', 'lamb', ANIMALS),
     ('animal-kitty', 'Ginger Kitty', 'kitty', ANIMALS),
     ('animal-butterfly', 'Butterfly', 'butterfly', ANIMALS),
+    ('vintage-rose-window', 'Rose Window', 'rose-window', ROSE),
+    ('vintage-candlelight', 'Candlelight', 'candlelight', CANDLE),
+    ('vintage-cross', 'Cross Medallion', 'cross-medallion', CROSS),
+    ('vintage-star', 'Star Medallion', 'star-medallion', STAR),
+    ('vintage-celtic', 'Celtic Ring', 'celtic-ring', CELTIC),
+    ('vintage-balloon', 'Flower Balloon', 'balloon', BALLOON),
+    ('vintage-greek', 'Greek Plate', 'greek-plate', GREEK),
     ('heart-bird', 'Songbird Heart', 'bird', BIRD),
     ('heart-wheat', 'Harvest Heart', 'wheat', WHEAT),
     ('heart-mountains', 'Mountain Heart', 'mountains', MOUNTAINS),
