@@ -1,9 +1,11 @@
-"""Build js/hearts.js from the line-art pages in art/hearts/.
+"""Build js/lineart.js from the line-art pages in art/hearts/ and art/gardens/.
 
 For each page this finds every enclosed area between the ink lines, merges
 specks into their neighbours, picks a number position inside each area, and
-assigns colours with a small per-picture art direction (zones by position and
-size, neighbours differ, mirrored areas match on symmetric designs).
+assigns colours. Hearts use a small per-picture art direction (zones by
+position and size, neighbours differ, mirrored areas match on symmetric
+designs). Gardens are drawn by tools/gardens.py and take each area's colour
+from the matching <name>-plan.png render.
 
     pip install pillow numpy scipy
     python3 tools/build_line_art.py
@@ -108,7 +110,14 @@ WAVES = dict(fn=waves, mirror=False, fam={
     'field': ['#f2fbff'], 'leafy': ['#2a9d8f', '#e9c46a', '#f4a261', '#8ab17d'], 'foam': ['#e6f6fb', '#b8e6f2'],
     'sea': ['#03558c', '#0a7bbd', '#48bfe3', '#90dbf4', '#1d3f72', '#5e9fd6']})
 
+GARDEN = dict(dir='gardens', category='Gardens', plan=True)
+
 PICS = [
+    ('garden-mushrooms', 'Mushroom Garden', 'mushrooms', GARDEN),
+    ('garden-wisteria', 'Wisteria Path', 'wisteria', GARDEN),
+    ('garden-tea', 'Garden Tea Party', 'tea', GARDEN),
+    ('garden-poppies', 'Poppy Garden', 'poppies', GARDEN),
+    ('garden-arbor', 'Lantern Arbor', 'arbor', GARDEN),
     ('heart-bird', 'Songbird Heart', 'bird', BIRD),
     ('heart-wheat', 'Harvest Heart', 'wheat', WHEAT),
     ('heart-mountains', 'Mountain Heart', 'mountains', MOUNTAINS),
@@ -116,8 +125,41 @@ PICS = [
     ('heart-lace', 'Lace Heart', 'lace', LACE),
 ]
 
+def colours_from_plan(plan_path, lab, R, max_colours=24):
+    """Each region takes the most common colour of the plan image under it;
+    near-identical colours are merged so the palette stays manageable."""
+    H, W = lab.shape
+    plan = np.array(Image.open(plan_path).convert('RGB').resize((W, H), Image.NEAREST)).astype(np.int64)
+    key = (plan[..., 0] << 16) | (plan[..., 1] << 8) | plan[..., 2]
+    m = lab > 0
+    u, cnt = np.unique(lab[m].astype(np.int64) * (1 << 24) + key[m], return_counts=True)
+    best = {}
+    for pr, c in zip(u.tolist(), cnt.tolist()):
+        k, col = pr >> 24, pr & 0xFFFFFF
+        if c > best.get(k, (0, 0))[0]:
+            best[k] = (c, col)
+    raw = [best.get(k, (0, 0xFFFFFF))[1] for k in range(1, R + 1)]
+    rgb = lambda c: np.array([(c >> 16) & 255, (c >> 8) & 255, c & 255], float)
+    freq = {}
+    for c in raw:
+        freq[c] = freq.get(c, 0) + 1
+    thresh = 14
+    while True:
+        kept, mapping = [], {}
+        for c in sorted(freq, key=lambda c: -freq[c]):
+            near = next((k for k in kept if np.linalg.norm(rgb(k) - rgb(c)) < thresh), None)
+            mapping[c] = near if near is not None else c
+            if near is None:
+                kept.append(c)
+        if len(kept) <= max_colours:
+            break
+        thresh += 6
+    return [None] + ['#%06x' % mapping[c] for c in raw]
+
+
 def process(pid, title, src, cfg):
-    im = Image.open(os.path.join(ART, src + '.png')).convert('L')
+    art = os.path.join(ROOT, 'art', cfg.get('dir', 'hearts'))
+    im = Image.open(os.path.join(art, src + '.png')).convert('L')
     s = SIZE / max(im.size)
     im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
     g = np.array(im).astype(np.float32)
@@ -157,6 +199,8 @@ def process(pid, title, src, cfg):
         py, px = pos[k]
         feats.append(dict(cx=cent[k][1] / W, cy=cent[k][0] / H, area=ar[k] / (W * H),
                           depth=depth_map[py, px] / W, lx=int(px), ly=int(py), r=float(rad[k])))
+    if cfg.get('plan'):
+        plan_colour = colours_from_plan(os.path.join(art, src + '-plan.png'), lab, R)
     # extend fills under the lines so no white halo shows between fill and ink
     inside = ~outside
     idx = ndi.distance_transform_edt(lab == 0, return_distances=False, return_indices=True)
@@ -171,9 +215,9 @@ def process(pid, title, src, cfg):
         for u, v in set(zip(a[m].tolist(), b[m].tolist())):
             adj[u].add(v); adj[v].add(u)
     # colour assignment
-    fam = cfg['fam']
-    colour = [None] * (R + 1)
-    order = sorted(range(1, R + 1), key=lambda k: -feats[k - 1]['area'])
+    fam = cfg.get('fam', {})
+    colour = plan_colour if cfg.get('plan') else [None] * (R + 1)
+    order = [] if cfg.get('plan') else sorted(range(1, R + 1), key=lambda k: -feats[k - 1]['area'])
     for k in order:
         if colour[k]: continue
         f = feats[k - 1]
@@ -206,14 +250,13 @@ def process(pid, title, src, cfg):
         rgb = pal[lab].astype(np.float32) * (1 - alpha[..., None] / 255.0)
         Image.fromarray(rgb.astype(np.uint8)).save(os.path.join(PREVIEW, pid + '-preview.png'))
     print(pid, W, H, 'regions', R, 'colors', len(palette), 'lines KB', len(lines) // 1024, 'labels KB', len(labels) // 1024)
-    return dict(id=pid, title=title, category='Hearts', kind='lines', w=W, h=H, palette=palette,
+    return dict(id=pid, title=title, category=cfg.get('category', 'Hearts'), kind='lines', w=W, h=H, palette=palette,
                 regions=regions, lines=lines, labels=labels)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ART = os.path.join(ROOT, 'art', 'hearts')
 PREVIEW = os.environ.get('PREVIEW_DIR')
 
 out = [process(*p) for p in PICS]
-with open(os.path.join(ROOT, 'js', 'hearts.js'), 'w') as fh:
-    fh.write('// Generated by tools/build_line_art.py from art/hearts/. Do not edit by hand.\n')
+with open(os.path.join(ROOT, 'js', 'lineart.js'), 'w') as fh:
+    fh.write('// Generated by tools/build_line_art.py from art/. Do not edit by hand.\n')
     fh.write('window.LINE_ART = ' + json.dumps(out, separators=(',', ':')) + ';\n')

@@ -7,6 +7,8 @@ It's a plain static site: no build step, no dependencies, no server code.
 
 ## Features
 
+- **Line-art gardens:** Mushroom Garden, Wisteria Path, Garden Tea Party, Poppy Garden and Lantern Arbor
+  (original drawings made by `tools/gardens.py`)
 - **Line-art hearts:** detailed coloring-book pages (Songbird, Harvest, Mountain, Ocean and Lace hearts).
   Tap a numbered area to fill it, drag to move around, and pinch to zoom in on small areas
 - **12 pixel-style pictures** in categories: Faith (Sunrise Cross, Dove of Peace, Noah's Rainbow,
@@ -50,7 +52,11 @@ pip install pillow numpy scipy
 PREVIEW_DIR=/tmp python3 tools/build_line_art.py   # also writes finished-color previews to /tmp
 ```
 
-This regenerates `js/hearts.js`.
+This regenerates `js/lineart.js`.
+
+Garden pages are drawn in code: `tools/gardens.py` writes SVGs to `art/gardens/`, each shape filled with
+its final color. `node tools/render_svg.js` renders the outlines and the color plan, and the build script
+takes each area's color from the plan.
 
 ## Add pixel pictures
 
@@ -74,8 +80,9 @@ art('my-id', 'My Picture', 'Nature', 32,
 | `index.html` | App shell (gallery, editor, dialogs) |
 | `css/style.css` | Styles, including dark mode |
 | `js/pictures.js` | Built-in pixel pictures |
-| `js/hearts.js` | Line-art pages (generated, don't edit by hand) |
-| `art/hearts/` | Source line-art images |
+| `js/lineart.js` | Line-art pages (generated, don't edit by hand) |
+| `art/hearts/`, `art/gardens/` | Source line art (gardens also have SVG sources and color plans) |
 | `tools/build_line_art.py` | Turns line art into numbered, colorable areas |
+| `tools/gardens.py`, `tools/render_svg.js` | Draw and render the garden pages |
 | `js/app.js` | Gallery, painting canvas, zoom/pan, saving, photo import |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline support and installable-app metadata |

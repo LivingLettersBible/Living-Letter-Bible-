@@ -183,7 +183,7 @@
 
   // ---------- Gallery ----------
 
-  const CATEGORIES = ['All', 'Hearts', 'Faith', 'Nature', 'Animals', 'Love', 'My Photos'];
+  const CATEGORIES = ['All', 'Gardens', 'Hearts', 'Faith', 'Nature', 'Animals', 'Love', 'My Photos'];
   let activeTab = store.get('lc.tab', 'All');
   if (!CATEGORIES.includes(activeTab)) activeTab = 'All';
 
