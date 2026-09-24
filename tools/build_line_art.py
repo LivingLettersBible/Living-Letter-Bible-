@@ -160,12 +160,13 @@ CROSS = dict(fn=cross_medallion, mirror=True, dir='vintage', category='Faith', f
 
 def greek_plate(f):
     A, y = f['area'], f['cy']
+    if f['solid'] and 0.12 < y < 0.58: return 'bull'
     if f['depth'] < 0.035: return 'rim'
     if 0.58 < y < 0.66: return 'meander'
     if y > 0.66: return 'fan'
     return 'ground' if A > 0.02 else 'detail'
 GREEK = dict(fn=greek_plate, mirror=False, dir='vintage', category='Vintage', fam={
-    'rim': ['#c65d3b', '#3b2a20'], 'meander': ['#c65d3b', '#f3e1c0'], 'fan': ['#c65d3b', '#e9b872', '#f3e1c0'],
+    'bull': ['#8c5a3c'], 'rim': ['#c65d3b', '#8c5a3c'], 'meander': ['#c65d3b', '#f3e1c0'], 'fan': ['#c65d3b', '#e9b872', '#f3e1c0'],
     'ground': ['#e9b872'], 'detail': ['#c65d3b', '#2a9d8f', '#f3e1c0']})
 
 
@@ -284,6 +285,19 @@ PICS = [
     ('heart-lace', 'Lace Heart', 'lace', LACE),
 ]
 
+MIN_LIGHTNESS = 0.45
+
+
+def no_black(hx):
+    """No black or near-black fills: raise dark colours to a mid shade of the same hue."""
+    r, g_, b = [int(hx[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    h, l, s_ = colorsys.rgb_to_hls(r, g_, b)
+    if l >= MIN_LIGHTNESS:
+        return hx
+    r, g_, b = colorsys.hls_to_rgb(h, MIN_LIGHTNESS, s_)
+    return '#%02x%02x%02x' % tuple(round(v * 255) for v in (r, g_, b))
+
+
 def colours_from_plan(plan_path, lab, R, max_colours=24):
     """Each region takes the most common colour of the plan image under it;
     near-identical colours are merged so the palette stays manageable."""
@@ -323,6 +337,11 @@ def process(pid, title, src, cfg):
     im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
     g = np.array(im).astype(np.float32)
     H, W = g.shape
+    # No solid black: hollow out thick ink shapes so they become colourable areas
+    # (a 3px outline is kept).
+    r_thick = max(2, round(7 * W / 1000))
+    solid = ndi.binary_erosion(ndi.binary_opening(g < 128, iterations=r_thick), iterations=3)
+    g[solid] = 255
     close = cfg.get('close', 1)
     wall = ndi.binary_dilation(g < 175, iterations=close) if close else g < 175
     lab, n = ndi.label(~wall)
@@ -354,10 +373,11 @@ def process(pid, title, src, cfg):
     cent = ndi.center_of_mass(np.ones_like(lab), lab, index=np.arange(1, R + 1))
     ar = ndi.sum(np.ones_like(lab), lab, index=np.arange(1, R + 1))
     depth_map = ndi.distance_transform_edt(~outside)
+    solid_frac = ndi.mean(solid.astype(np.float32), lab, index=np.arange(1, R + 1))
     feats = []
     for k in range(R):
         py, px = pos[k]
-        feats.append(dict(cx=cent[k][1] / W, cy=cent[k][0] / H, area=ar[k] / (W * H),
+        feats.append(dict(solid=bool(solid_frac[k] > 0.5), cx=cent[k][1] / W, cy=cent[k][0] / H, area=ar[k] / (W * H),
                           depth=depth_map[py, px] / W, lx=int(px), ly=int(py), r=float(rad[k])))
     if cfg.get('plan'):
         plan_colour = colours_from_plan(os.path.join(art, src + '-plan.png'), lab, R)
@@ -389,6 +409,7 @@ def process(pid, title, src, cfg):
             j = lab[f['ly'], mx]
             if j and not colour[j] and 0.6 < feats[j - 1]['area'] / f['area'] < 1.65:
                 colour[j] = colour[k]
+    colour = [None] + [no_black(c) for c in colour[1:]]
     palette = []
     for c in colour[1:]:
         if c not in palette: palette.append(c)
