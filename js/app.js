@@ -34,7 +34,7 @@
 
   let customs = store.get(CUSTOM_KEY, []);
   const LINE_ART = window.LINE_ART || [];
-  const allPictures = () => [...customs, ...LINE_ART, ...window.PICTURES];
+  const allPictures = () => [...customs, ...LINE_ART];
   const findPicture = (id) => allPictures().find((p) => p.id === id);
 
   // A picture is either a pixel grid (cells) or line art with fillable regions.
@@ -183,7 +183,7 @@
 
   // ---------- Gallery ----------
 
-  const CATEGORIES = ['All', 'Gardens', 'Hearts', 'Faith', 'Nature', 'Animals', 'Love', 'My Photos'];
+  const CATEGORIES = ['All', 'Gardens', 'Hearts', 'Faith', 'Animals', 'My Photos'];
   let activeTab = store.get('lc.tab', 'All');
   if (!CATEGORIES.includes(activeTab)) activeTab = 'All';
 
@@ -208,7 +208,7 @@
   }
 
   function renderDaily() {
-    const pics = LINE_ART.length ? LINE_ART : window.PICTURES;
+    const pics = LINE_ART;
     const day = Math.floor(Date.now() / 86400000);
     const pic = pics[day % pics.length];
     const order = loadOrder(pic);

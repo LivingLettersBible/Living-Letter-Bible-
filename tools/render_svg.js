@@ -1,4 +1,4 @@
-// Render each art/gardens/*.svg twice with headless Chromium:
+// Render each art/drawn/*.svg twice with headless Chromium:
 //   <name>.png       black outlines on white (the coloring page)
 //   <name>-plan.png  fills only, no outlines (the colour plan)
 // Usage: node tools/render_svg.js   (needs playwright or playwright-core)
@@ -11,7 +11,7 @@ try {
   ({ chromium } = require('playwright-core'));
 }
 
-const dir = path.join(__dirname, '..', 'art', 'gardens');
+const dir = path.join(__dirname, '..', 'art', 'drawn');
 const LINES = '[fill]:not([fill="none"]) { fill: #ffffff !important; }';
 const PLAN = '* { stroke: none !important; }';
 

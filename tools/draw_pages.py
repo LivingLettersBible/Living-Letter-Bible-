@@ -1,4 +1,4 @@
-"""Draw the Gardens line-art pages as SVG files in art/gardens/.
+"""Draw the original line-art pages (Gardens, Faith, Animals) as SVG files in art/drawn/.
 
 Every shape is drawn with a black outline and filled with the colour it
 should end up as. tools/render_svg.js then renders two images per page:
@@ -12,7 +12,7 @@ import os
 import random
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'art', 'gardens')
+OUT = os.path.join(ROOT, 'art', 'drawn')
 
 INK = 'stroke="#111" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"'
 
@@ -135,14 +135,90 @@ FRAME_OUT = 'M50,975 L50,500 A450,450 0 0 1 950,500 L950,975 Z'
 FRAME_IN = 'M76,949 L76,500 A424,424 0 0 1 924,500 L924,949 Z'
 
 
-def page(body, border):
+# A pointed, stained-glass style window for the Faith pages.
+GOTHIC_OUT = 'M50,975 L50,470 Q50,150 500,40 Q950,150 950,470 L950,975 Z'
+GOTHIC_IN = 'M76,949 L76,472 Q76,172 500,70 Q924,172 924,472 L924,949 Z'
+
+
+def page(body, border, gothic=False):
+    out_d, in_d = (GOTHIC_OUT, GOTHIC_IN) if gothic else (FRAME_OUT, FRAME_IN)
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
 <rect width="1000" height="1000" fill="#ffffff"/>
-<path d="{FRAME_OUT}" fill="{border}" stroke="#111" stroke-width="5"/>
-<clipPath id="c"><path d="{FRAME_IN}"/></clipPath>
+<path d="{out_d}" fill="{border}" stroke="#111" stroke-width="5"/>
+<clipPath id="c"><path d="{in_d}"/></clipPath>
 <g clip-path="url(#c)">{body}</g>
-<path d="{FRAME_IN}" fill="none" stroke="#111" stroke-width="5"/>
+<path d="{in_d}" fill="none" stroke="#111" stroke-width="5"/>
 </svg>'''
+
+
+_clip_ids = [0]
+
+
+def clipped(d, content):
+    """Draw content only inside outline d (scales, weave, wool...), then the outline itself."""
+    _clip_ids[0] += 1
+    cid = f'k{_clip_ids[0]}'
+    return f'<clipPath id="{cid}"><path d="{d}"/></clipPath><g clip-path="url(#{cid})">{content}</g>' + path(d)
+
+
+def rect_d(x, y, w, h):
+    return f'M{f(x)},{f(y)} h{f(w)} v{f(h)} h{f(-w)} Z'
+
+
+def ellipse_d(cx, cy, rx, ry):
+    return f'M{f(cx - rx)},{f(cy)} A{f(rx)},{f(ry)} 0 1 0 {f(cx + rx)},{f(cy)} A{f(rx)},{f(ry)} 0 1 0 {f(cx - rx)},{f(cy)} Z'
+
+
+def star(cx, cy, r_out, r_in, n, fill, rot=-90):
+    pts = []
+    for i in range(n * 2):
+        a = math.radians(rot + 180 * i / n)
+        r = r_out if i % 2 == 0 else r_in
+        pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    return poly(pts, fill)
+
+
+def waves(y0, bands, colours, amp=28, length=110):
+    """Stacked wavy bands of water from y0 down to the bottom."""
+    out = []
+    for k in range(bands):
+        y = y0 + k * 55
+        shift = (k % 2) * length / 2
+        d = f'M-120,{f(y)}'
+        x = -120 + shift
+        while x < 1120:
+            d += f' Q{f(x + length / 2)},{f(y - amp)} {f(x + length)},{f(y)}'
+            x += length
+        d += ' L1120,1000 L-120,1000 Z'
+        out.append(path(d, colours[k % len(colours)]))
+    return ''.join(out)
+
+
+def ring_band(cx, cy, r0, r1, fill):
+    return path(f'M{f(cx - r1)},{f(cy)} A{f(r1)},{f(r1)} 0 0 1 {f(cx + r1)},{f(cy)} L{f(cx + r0)},{f(cy)} '
+                f'A{f(r0)},{f(r0)} 0 0 0 {f(cx - r0)},{f(cy)} Z', fill)
+
+
+def fish(cx, cy, L, body, scale_colours, tail, direction=1):
+    x = lambda v: cx + direction * v
+    nose, join = x(L / 2), x(-L * 0.32)
+    d = (f'M{f(nose)},{f(cy)} Q{f(x(L * 0.05))},{f(cy - L * 0.34)} {f(join)},{f(cy)} '
+         f'Q{f(x(L * 0.05))},{f(cy + L * 0.3)} {f(nose)},{f(cy)} Z')
+    o = [poly([(x(-L * 0.2), cy - L * 0.12), (x(-L * 0.02), cy - L * 0.3), (x(L * 0.12), cy - L * 0.14)], tail)]
+    o.append(poly([(x(-L * 0.3), cy), (x(-L * 0.58), cy - L * 0.2), (x(-L * 0.5), cy), (x(-L * 0.58), cy + L * 0.2)], tail))
+    scales = []
+    r = L * 0.065
+    for row in range(-4, 5):
+        for col in range(-6, 7):
+            sx = cx + col * r * 1.5 + (row % 2) * r * 0.75
+            sy = cy + row * r * 1.1
+            scales.append(circle(sx, sy, r, scale_colours[(row + col) % len(scale_colours)]))
+    o.append(path(d, body))
+    o.append(clipped(d, ''.join(scales)))
+    o.append(path(f'M{f(x(L * 0.3))},{f(cy - L * 0.2)} Q{f(x(L * 0.24))},{f(cy)} {f(x(L * 0.3))},{f(cy + L * 0.2)} '
+                  f'Q{f(x(L * 0.5))},{f(cy)} {f(x(L * 0.3))},{f(cy - L * 0.2)} Z', body))
+    o.append(circle(x(L * 0.37), cy - L * 0.05, L * 0.035, '#ffffff'))
+    return ''.join(o)
 
 
 # ---------------------------------------------------------------- scenes
@@ -434,12 +510,309 @@ def tea_garden():
     return page(''.join(o), '#7c4dbd')
 
 
+
+# ---------------------------------------------------------------- faith
+
+def sunrise_cross():
+    rng = random.Random(21)
+    o = [sunburst(500, 560, 32, ['#ffd29a', '#ffb870', '#ffe3b8'])]
+    o.append(circle(500, 560, 215, '#ffe9a8'))
+    o.append(circle(500, 560, 150, '#ffd45c'))
+    for x, y in [(200, 260), (250, 300), (760, 230)]:
+        o.append(path(f'M{x - 26},{y} Q{x - 13},{y - 16} {x},{y} Q{x + 13},{y - 16} {x + 26},{y}', 'none'))
+    o.append(path('M0,700 Q250,600 500,680 T1000,650 L1000,1000 L0,1000 Z', '#a7d37f'))
+    o.append(path('M0,780 Q300,700 600,770 T1000,740 L1000,1000 L0,1000 Z', '#7fbc62'))
+    # wooden cross with grain
+    grain_v = ''.join(path(f'M{x},190 Q{x + 8},400 {x},600 T{x},830', 'none', 'stroke-width="2.5"') for x in (489, 511))
+    o.append(clipped(rect_d(468, 190, 64, 640), rect(468, 190, 64, 640, '#8b5a33') + grain_v))
+    grain_h = ''.join(path(f'M340,{y} Q500,{y + 8} 660,{y}', 'none', 'stroke-width="2.5"') for y in (341, 361))
+    o.append(clipped(rect_d(340, 320, 320, 62), rect(340, 320, 320, 62, '#9c6a3f') + grain_h))
+    o.append(path('M0,860 Q250,790 500,840 T1000,820 L1000,1000 L0,1000 Z', '#5e9e4f'))
+    # lilies
+    for x, y, s in [(200, 850, 1.0), (800, 850, 1.0), (330, 915, 0.8), (670, 915, 0.8)]:
+        o.append(line(x, y + 40 * s, x, 1000, 6))
+        o.append(leaf(x, y + 90 * s, 70 * s, 200, '#6aa84f'))
+        o.append(leaf(x, y + 110 * s, 70 * s, -20, '#88c06a'))
+        o.append(flower(x, y, 50 * s, '#fdf6e3', '#f2c14e', n=6))
+    for x in (90, 420, 580, 910):
+        o.append(tuft(x, 1000, 70, '#4c8f3f', rng))
+    return page(''.join(o), '#c9922e', gothic=True)
+
+
+def dove():
+    o = [rect(0, 0, 1000, 1000, '#cfe8fb'), sunburst(500, -40, 30, ['#cfe8fb', '#b7dcf7', '#e3f2fd'])]
+    rng = random.Random(4)
+    o.append(scallop(190, 330, 120, 55, 11, 16, '#f4f9ff', rng))
+    o.append(scallop(830, 260, 110, 50, 10, 16, '#f4f9ff', rng))
+    o.append(waves(770, 4, ['#4f9fd8', '#3b86c4', '#6bb6e6', '#2f6fa8']))
+    # tail
+    for i in range(5):
+        a = math.radians(160 + i * 10)
+        o.append(ellipse(390 + math.cos(a) * 80, 540 + math.sin(a) * 80, 80, 22, ['#eef1f6', '#dfe5ee'][i % 2], math.degrees(a)))
+    # far wing
+    for i in range(6):
+        a = math.radians(-150 + i * 9)
+        L = 170 - i * 8
+        o.append(ellipse(470 + math.cos(a) * L / 2, 440 + math.sin(a) * L / 2, L / 2, 22, '#d7deea', math.degrees(a)))
+    o.append(ellipse(520, 490, 175, 80, '#fbfcfe', -12))
+    o.append(circle(665, 410, 58, '#fbfcfe'))
+    # near wing: primaries, then coverts, then shoulder
+    for i in range(7):
+        a = math.radians(-160 + i * 9)
+        L = 250 - i * 14
+        o.append(ellipse(545 + math.cos(a) * L / 2, 450 + math.sin(a) * L / 2, L / 2, 25, ['#ffffff', '#eef3f9'][i % 2], math.degrees(a)))
+    for i in range(6):
+        a = math.radians(-150 + i * 11)
+        o.append(ellipse(545 + math.cos(a) * 60, 450 + math.sin(a) * 60, 62, 23, '#f4f7fb', math.degrees(a)))
+    o.append(ellipse(550, 455, 75, 42, '#fbfcfe', -10))
+    o.append(poly([(715, 400), (760, 414), (715, 426)], '#f4a340'))
+    o.append(circle(680, 398, 8, '#222222'))
+    # olive branch
+    o.append(path('M728,418 Q770,480 805,560', 'none', 'stroke-width="7"'))
+    for k, (x, y) in enumerate([(742, 440), (758, 468), (774, 497), (790, 528)]):
+        o.append(leaf(x, y, 58, 160 if k % 2 else 10, ['#7fa650', '#98bd68'][k % 2]))
+    for x, y in [(768, 505), (752, 455)]:
+        o.append(ellipse(x, y, 9, 13, '#3e6b35'))
+    return page(''.join(o), '#3b86c4', gothic=True)
+
+
+def noahs_ark():
+    rng = random.Random(8)
+    o = [rect(0, 0, 1000, 1000, '#d5ecf8')]
+    colours = ['#ef5350', '#ffa726', '#ffee58', '#66bb6a', '#42a5f5', '#7e57c2']
+    for i, c in enumerate(colours):
+        o.append(ring_band(500, 660, 440 - (i + 1) * 45, 440 - i * 45, c))
+    o.append(scallop(130, 640, 120, 60, 11, 18, '#ffffff', rng))
+    o.append(scallop(870, 640, 120, 60, 11, 18, '#ffffff', rng))
+    # giraffe peeking over the roof
+    neck = rect_d(600, 280, 40, 260)
+    spots = ''.join(circle(605 + (k % 2) * 28, 300 + k * 38, 13, '#c9822e') for k in range(7))
+    o.append(clipped(neck, rect(600, 280, 40, 260, '#f2c14e') + spots))
+    o.append(ellipse(640, 285, 48, 26, '#f2c14e', -15))
+    o.append(ellipse(600, 262, 18, 9, '#f2c14e', -40))
+    for dx in (0, 16):
+        o.append(line(628 + dx, 262, 624 + dx, 232, 4))
+        o.append(circle(624 + dx, 228, 7, '#8b5a33'))
+    o.append(circle(655, 278, 5, '#222222'))
+    # cabin and roof
+    o.append(rect(320, 520, 360, 120, '#d9a066'))
+    for x in (380, 455, 545, 620):
+        o.append(circle(x, 575, 24, '#fbe7b5'))
+    shingles = ''.join(path(f'M280,{y} L720,{y}', 'none', 'stroke-width="2.5"') for y in (465, 490, 512))
+    roof = 'M300,528 L500,436 L700,528 Z'
+    o.append(clipped(roof, path(roof, '#b5543c') + shingles))
+    # hull with planks
+    hull = 'M180,640 L820,640 Q780,780 700,790 L300,790 Q220,780 180,640 Z'
+    planks = ''.join(path(f'M150,{y} L850,{y}', 'none', 'stroke-width="2.5"') for y in (675, 710, 745))
+    planks += ''.join(line(x + (i % 2) * 60, y, x + (i % 2) * 60, y + 35, 2.5) for i, y in enumerate((640, 675, 710, 745)) for x in range(260, 760, 120))
+    o.append(clipped(hull, path(hull, '#9a6236') + planks))
+    o.append(rect(170, 625, 660, 20, '#7a4a28', 6))
+    o.append(waves(800, 4, ['#4f9fd8', '#3b86c4', '#6bb6e6', '#2f6fa8'], amp=30, length=120))
+    for x, y in [(220, 250), (270, 280), (800, 300)]:
+        o.append(path(f'M{x - 24},{y} Q{x - 12},{y - 14} {x},{y} Q{x + 12},{y - 14} {x + 24},{y}', 'none'))
+    return page(''.join(o), '#7e57c2', gothic=True)
+
+
+def loaves_fishes():
+    o = [sunburst(500, 600, 30, ['#fbe9c6', '#f6dcaa'])]
+    # checked cloth
+    for r in range(6):
+        for c in range(15):
+            o.append(rect(c * 70 - 20, 720 + r * 60, 70, 60, ['#e8b4a4', '#fbefe6'][(r + c) % 2]))
+    # basket
+    o.append(ellipse(500, 610, 300, 70, '#b97a3d'))
+    body = 'M200,620 Q215,860 330,900 L670,900 Q785,860 800,620 Z'
+    weave = ''.join(path(f'M150,{y} L850,{y}', 'none', 'stroke-width="2.5"') for y in range(650, 900, 40))
+    weave += ''.join(line(x + (k % 2) * 40, y, x + (k % 2) * 40, y + 40, 2.5) for k, y in enumerate(range(610, 900, 40)) for x in range(170, 850, 80))
+    o.append(clipped(body, path(body, '#d9a25f') + weave))
+    # loaves
+    for x, y, rx, ry in [(360, 580, 100, 58), (640, 580, 100, 58), (500, 560, 105, 62), (420, 625, 95, 50), (590, 628, 95, 50)]:
+        d = ellipse_d(x, y, rx, ry)
+        cuts = ''.join(path(f'M{x + dx - 18},{y - 30} Q{x + dx},{y} {x + dx + 18},{y + 30}', 'none', 'stroke-width="2.5"') for dx in (-40, 0, 40))
+        o.append(clipped(d, path(d, '#e3a65b') + cuts))
+    o.append(fish(360, 700, 300, '#8fb8d8', ['#a9cbe6', '#7ea9cc', '#c3dcef'], '#5f8fb8', 1))
+    o.append(fish(650, 735, 290, '#9ec7a8', ['#b7d8bd', '#89b894', '#cfe6d2'], '#6a9f78', -1))
+    return page(''.join(o), '#b97a3d', gothic=True)
+
+
+def bethlehem():
+    rng = random.Random(12)
+    o = [sunburst(500, 250, 28, ['#1f2f5c', '#2a3d73'])]
+    o.append(circle(500, 250, 115, '#3f5596'))
+    o.append(star(500, 250, 120, 36, 8, '#ffd96a'))
+    o.append(star(500, 250, 62, 20, 8, '#fff2b3'))
+    for _ in range(14):
+        x, y = rng.uniform(120, 880), rng.uniform(120, 560)
+        if math.hypot(x - 500, y - 250) > 170:
+            o.append(star(x, y, rng.uniform(14, 22), 7, 5, '#fff6d0'))
+    o.append(path('M0,690 Q250,610 520,670 T1000,650 L1000,1000 L0,1000 Z', '#2e3f6e'))
+    # town on the hill
+    for x, y, w, h, roof in [(110, 600, 90, 110, 'tri'), (215, 620, 80, 90, 'dome'), (650, 600, 90, 100, 'tri'), (760, 585, 70, 120, 'dome'), (850, 615, 80, 90, 'tri')]:
+        o.append(rect(x, y, w, h, '#44548a'))
+        if roof == 'tri':
+            o.append(poly([(x - 8, y), (x + w / 2, y - 45), (x + w + 8, y)], '#56669c'))
+        else:
+            o.append(path(f'M{x},{y} A{w / 2},{w / 2} 0 0 1 {x + w},{y} Z', '#56669c'))
+        o.append(rect(x + w / 2 - 12, y + 25, 24, 30, '#ffcf6b', 4))
+    # stable
+    o.append(rect(0, 870, 1000, 130, '#24345f'))
+    o.append(circle(500, 700, 150, '#fff1b8'))
+    o.append(poly([(260, 610), (500, 470), (740, 610)], '#8a5a3b'))
+    for x in (290, 690):
+        o.append(rect(x, 600, 24, 290, '#6e4630'))
+    o.append(rect(270, 600, 460, 22, '#6e4630'))
+    o.append(poly([(400, 800), (600, 800), (570, 880), (430, 880)], '#a0703f'))
+    for k in range(9):
+        x = 410 + k * 22
+        o.append(poly([(x, 802), (x + 11, 772 - (k % 3) * 8), (x + 22, 802)], '#f2c14e'))
+    o.append(ellipse(500, 790, 60, 22, '#fbf5ea'))
+    o.append(circle(470, 782, 18, '#f3d6b6'))
+    return page(''.join(o), '#c9a227', gothic=True)
+
+
+# ---------------------------------------------------------------- animals
+
+def little_lamb():
+    rng = random.Random(15)
+    o = [sunburst(820, 200, 28, ['#d7eefc', '#e8f6ff'])]
+    o.append(circle(820, 200, 75, '#ffd76a'))
+    o.append(scallop(250, 220, 110, 45, 10, 14, '#ffffff', rng))
+    o.append(path('M0,560 Q300,480 600,560 T1000,540 L1000,1000 L0,1000 Z', '#b4dc8a'))
+    o.append(path('M0,700 Q300,640 650,700 T1000,690 L1000,1000 L0,1000 Z', '#8cc56a'))
+    for x in (390, 440, 530, 580):
+        o.append(rect(x, 640, 26, 170, '#4a3b35', 8))
+        o.append(rect(x - 2, 800, 30, 22, '#2e2420', 6))
+    body = 'M250,610 Q240,480 360,460 Q470,420 580,460 Q690,480 690,590 Q700,700 580,720 Q470,745 360,720 Q240,710 250,610 Z'
+    curls = ''.join(circle(260 + c * 52 + (r % 2) * 26, 450 + r * 48, 27, ['#fbf8f1', '#f1ebdd'][(r + c) % 2]) for r in range(7) for c in range(9))
+    o.append(clipped(body, path(body, '#fbf8f1') + curls))
+    o.append(scallop(250, 600, 32, 28, 7, 8, '#fbf8f1', rng))
+    o.append(ellipse(655, 500, 48, 18, '#4a3b35', 30))
+    o.append(ellipse(745, 490, 48, 18, '#4a3b35', -30))
+    o.append(ellipse(700, 540, 62, 78, '#4a3b35'))
+    o.append(scallop(700, 470, 58, 32, 8, 10, '#fbf8f1', rng))
+    for x in (678, 722):
+        o.append(circle(x, 535, 13, '#ffffff'))
+        o.append(circle(x + 2, 537, 6, '#1a1a1a'))
+    o.append(ellipse(700, 585, 16, 10, '#e58a9a'))
+    o.append(bed(40, 960, 880, 3, ['#f28fb5', '#f6d24a', '#b784d9', '#ffffff'], rng, 26))
+    for x, y, c in [(180, 420, '#f6a6c1'), (860, 460, '#9fc5e8')]:
+        o.append(ellipse(x - 18, y - 10, 20, 14, c, -30))
+        o.append(ellipse(x + 18, y - 10, 20, 14, c, 30))
+        o.append(ellipse(x - 14, y + 12, 14, 10, c, 30))
+        o.append(ellipse(x + 14, y + 12, 14, 10, c, -30))
+        o.append(ellipse(x, y, 5, 20, '#4a3b35'))
+    return page(''.join(o), '#6a994e')
+
+
+def ginger_kitty():
+    rng = random.Random(6)
+    o = [rect(0, 0, 1000, 1000, '#f6ead8')]
+    for x in range(0, 1000, 80):
+        o.append(rect(x, 0, 40, 1000, '#efdcc2'))
+    # window with curtains
+    o.append(rect(230, 130, 540, 360, '#cfe9f7'))
+    o.append(scallop(420, 400, 170, 70, 12, 14, '#8cc56a', rng))
+    o.append(scallop(640, 420, 150, 60, 12, 14, '#6aa84f', rng))
+    o.append(line(500, 130, 500, 490, 8))
+    o.append(line(230, 310, 770, 310, 8))
+    o.append(rect(210, 480, 580, 30, '#c9925a', 6))
+    for side in (-1, 1):
+        x0 = 500 + side * 330
+        o.append(path(f'M{x0},100 L{x0 - side * 120},100 Q{x0 - side * 60},300 {x0 - side * 130},520 L{x0},520 Z', '#e58ab8'))
+        for k in (1, 2):
+            xx = x0 - side * 35 * k
+            o.append(path(f'M{xx},105 Q{xx - side * 15},300 {xx - side * 10},515', 'none', 'stroke-width="2.5"'))
+    o.append(rect(80, 90, 840, 26, '#a0703f', 10))
+    # cushion
+    o.append(ellipse(500, 900, 320, 75, '#9b6fd6'))
+    for k in range(7):
+        o.append(poly([(260 + k * 80, 900), (300 + k * 80, 875), (340 + k * 80, 900), (300 + k * 80, 925)], '#c8a6ea'))
+    # tail, body with stripes, chest
+    o.append(path('M650,860 Q860,860 840,720 Q830,650 780,660 Q810,720 780,800 Q740,840 640,830 Z', '#f5a25d'))
+    body = 'M320,880 Q300,640 400,560 Q500,510 600,560 Q700,640 680,880 Z'
+    stripes = ''.join(path(f'M280,{y} Q500,{y - 40} 720,{y} L720,{y + 22} Q500,{y - 18} 280,{y + 22} Z', '#d9803f') for y in (640, 710, 780))
+    o.append(clipped(body, path(body, '#f5a25d') + stripes))
+    o.append(ellipse(500, 740, 85, 130, '#fff3e6'))
+    for x in (430, 570):
+        o.append(ellipse(x, 875, 55, 30, '#fff3e6'))
+    # head
+    for side in (-1, 1):
+        o.append(poly([(500 + side * 70, 330), (500 + side * 135, 215), (500 + side * 150, 380)], '#f5a25d'))
+        o.append(poly([(500 + side * 88, 330), (500 + side * 130, 250), (500 + side * 136, 360)], '#ffb3c6'))
+    head = ellipse_d(500, 420, 165, 140)
+    hstripes = ''.join(poly([(x - 12, 270), (x + 12, 270), (x, 345)], '#d9803f') for x in (465, 500, 535))
+    o.append(clipped(head, path(head, '#f5a25d') + hstripes))
+    o.append(ellipse(465, 480, 42, 32, '#fff3e6'))
+    o.append(ellipse(535, 480, 42, 32, '#fff3e6'))
+    for x in (435, 565):
+        o.append(ellipse(x, 410, 32, 38, '#8bc34a'))
+        o.append(ellipse(x, 412, 10, 30, '#1a1a1a'))
+        o.append(circle(x + 10, 398, 6, '#ffffff'))
+    o.append(poly([(485, 455), (515, 455), (500, 472)], '#ff7b9c'))
+    for side in (-1, 1):
+        for dy in (-8, 10):
+            o.append(line(500 + side * 70, 475 + dy, 500 + side * 170, 465 + dy * 2.5, 2.5))
+    # plant and yarn
+    o.append(poly([(80, 760), (220, 760), (200, 900), (100, 900)], '#d0643b'))
+    o.append(rect(70, 740, 160, 30, '#e07b52', 6))
+    for k, a in enumerate(range(-150, -20, 22)):
+        o.append(leaf(150, 745, 140, a, ['#6aa84f', '#88c06a'][k % 2]))
+    yarn = ellipse_d(860, 880, 75, 75)
+    strands = ''.join(path(f'M{780 + k * 22},820 Q{860},{880 + (k - 3) * 20} {800 + k * 22},960', 'none', 'stroke-width="2.5"') for k in range(7))
+    o.append(clipped(yarn, path(yarn, '#4fa3d9') + strands))
+    o.append(path('M800,920 Q720,960 640,940', 'none'))
+    return page(''.join(o), '#d9803f')
+
+
+def butterfly():
+    rng = random.Random(10)
+    o = [sunburst(500, 520, 36, ['#fdf2e4', '#f9e3c8'])]
+
+    def wing(sign):
+        mx = lambda x: 500 + sign * (x - 500)
+        out = []
+        upper = (f'M{f(mx(518))},460 C{f(mx(600))},230 {f(mx(870))},170 {f(mx(890))},320 '
+                 f'C{f(mx(905))},440 {f(mx(760))},520 {f(mx(518))},500 Z')
+        lower = (f'M{f(mx(518))},515 C{f(mx(720))},510 {f(mx(840))},640 {f(mx(770))},770 '
+                 f'C{f(mx(700))},880 {f(mx(560))},760 {f(mx(518))},560 Z')
+        for shape, fill, eye, edge in [(upper, '#f28f3b', (760, 330), [(620, 250), (720, 205), (830, 215), (885, 300), (860, 410), (760, 470)]),
+                                       (lower, '#f6b44b', (690, 650), [(640, 540), (770, 600), (800, 690), (760, 780), (660, 790)])]:
+            inner = ''.join(line(mx(520), 500, mx(x), y, 3) for x, y in edge)
+            inner += ''.join(circle(mx(x + (500 - x) * 0.08), y + (500 - y) * 0.08, 22, '#fff4e0') for x, y in edge)
+            ex, ey = eye
+            inner += circle(mx(ex), ey, 62, '#ffd36b') + circle(mx(ex), ey, 38, '#7b3fa0') + circle(mx(ex), ey, 15, '#ffffff')
+            out.append(clipped(shape, path(shape, fill) + inner))
+        return ''.join(out)
+
+    o.append(wing(1))
+    o.append(wing(-1))
+    o.append(ellipse(500, 530, 24, 125, '#4a3b35'))
+    for k in range(5):
+        o.append(line(480, 480 + k * 25, 520, 480 + k * 25, 2.5))
+    o.append(circle(500, 395, 28, '#4a3b35'))
+    for side in (-1, 1):
+        o.append(path(f'M{500 + side * 10},372 Q{500 + side * 60},280 {500 + side * 110},250', 'none'))
+        o.append(circle(500 + side * 112, 248, 12, '#4a3b35'))
+    o.append(bed(40, 960, 900, 2, ['#f28fb5', '#b784d9', '#f6d24a', '#9fc5e8'], rng, 30))
+    for x, a in [(120, -60), (200, -110), (800, -70), (880, -120)]:
+        o.append(leaf(x, 880, 110, a, '#7fb069'))
+    return page(''.join(o), '#7b3fa0')
+
+
 SCENES = {
     'mushrooms': mushroom_garden,
     'wisteria': wisteria_path,
     'arbor': lantern_arbor,
     'poppies': poppy_garden,
     'tea': tea_garden,
+    'cross': sunrise_cross,
+    'dove': dove,
+    'ark': noahs_ark,
+    'loaves': loaves_fishes,
+    'bethlehem': bethlehem,
+    'lamb': little_lamb,
+    'kitty': ginger_kitty,
+    'butterfly': butterfly,
 }
 
 if __name__ == '__main__':

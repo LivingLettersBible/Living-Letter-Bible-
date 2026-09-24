@@ -1,10 +1,10 @@
-"""Build js/lineart.js from the line-art pages in art/hearts/ and art/gardens/.
+"""Build js/lineart.js from the line-art pages in art/hearts/ and art/drawn/.
 
 For each page this finds every enclosed area between the ink lines, merges
 specks into their neighbours, picks a number position inside each area, and
 assigns colours. Hearts use a small per-picture art direction (zones by
 position and size, neighbours differ, mirrored areas match on symmetric
-designs). Gardens are drawn by tools/gardens.py and take each area's colour
+designs). Gardens, Faith and Animals pages are drawn by tools/draw_pages.py and take each area's colour
 from the matching <name>-plan.png render.
 
     pip install pillow numpy scipy
@@ -110,7 +110,9 @@ WAVES = dict(fn=waves, mirror=False, fam={
     'field': ['#f2fbff'], 'leafy': ['#2a9d8f', '#e9c46a', '#f4a261', '#8ab17d'], 'foam': ['#e6f6fb', '#b8e6f2'],
     'sea': ['#03558c', '#0a7bbd', '#48bfe3', '#90dbf4', '#1d3f72', '#5e9fd6']})
 
-GARDEN = dict(dir='gardens', category='Gardens', plan=True)
+GARDEN = dict(dir='drawn', category='Gardens', plan=True)
+FAITH = dict(dir='drawn', category='Faith', plan=True)
+ANIMALS = dict(dir='drawn', category='Animals', plan=True)
 
 PICS = [
     ('garden-mushrooms', 'Mushroom Garden', 'mushrooms', GARDEN),
@@ -118,6 +120,14 @@ PICS = [
     ('garden-tea', 'Garden Tea Party', 'tea', GARDEN),
     ('garden-poppies', 'Poppy Garden', 'poppies', GARDEN),
     ('garden-arbor', 'Lantern Arbor', 'arbor', GARDEN),
+    ('faith-cross', 'Sunrise Cross', 'cross', FAITH),
+    ('faith-dove', 'Dove of Peace', 'dove', FAITH),
+    ('faith-ark', "Noah's Ark", 'ark', FAITH),
+    ('faith-loaves', 'Loaves and Fishes', 'loaves', FAITH),
+    ('faith-bethlehem', 'Star of Bethlehem', 'bethlehem', FAITH),
+    ('animal-lamb', 'Little Lamb', 'lamb', ANIMALS),
+    ('animal-kitty', 'Ginger Kitty', 'kitty', ANIMALS),
+    ('animal-butterfly', 'Butterfly', 'butterfly', ANIMALS),
     ('heart-bird', 'Songbird Heart', 'bird', BIRD),
     ('heart-wheat', 'Harvest Heart', 'wheat', WHEAT),
     ('heart-mountains', 'Mountain Heart', 'mountains', MOUNTAINS),
