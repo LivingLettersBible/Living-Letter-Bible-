@@ -7,11 +7,12 @@ It's a plain static site: no build step, no dependencies, no server code.
 
 ## Features
 
-- **25 line-art pages** in five categories:
+- **30 line-art pages** in six categories:
+  - **Crowns:** Royal Crown, Crown Mandala, Crown Collection
   - **Gardens:** Mushroom Garden, Wisteria Path, Garden Tea Party, Poppy Garden, Lantern Arbor
-  - **Hearts:** Songbird, Harvest, Mountain, Ocean and Lace hearts
+  - **Hearts:** Songbird, Harvest, Mountain, Ocean and Lace hearts, Heart Mandala
   - **Faith:** Sunrise Cross, Dove of Peace, Noah's Ark, Loaves and Fishes, Star of Bethlehem,
-    Rose Window, Candlelight, Cross Medallion
+    Rose Window, Candlelight, Cross Medallion, Heavenly Stars
   - **Animals:** Little Lamb, Ginger Kitty, Butterfly
   - **Vintage:** Star Medallion, Celtic Ring, Flower Balloon, Greek Plate
 
@@ -67,7 +68,7 @@ takes each area's color from the plan.
 | `index.html` | App shell (gallery, editor, dialogs) |
 | `css/style.css` | Styles, including dark mode |
 | `js/lineart.js` | Line-art pages (generated, don't edit by hand) |
-| `art/hearts/`, `art/drawn/`, `art/vintage/` | Source line art (drawn pages also have SVG sources and color plans) |
+| `art/hearts/`, `art/crowns/`, `art/drawn/`, `art/vintage/` | Source line art (drawn pages also have SVG sources and color plans) |
 | `tools/build_line_art.py` | Turns line art into numbered, colorable areas |
 | `tools/draw_pages.py`, `tools/render_svg.js` | Draw and render the original pages |
 | `js/app.js` | Gallery, painting canvas, zoom/pan, saving, photo import |

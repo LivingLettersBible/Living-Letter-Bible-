@@ -190,6 +190,63 @@ BALLOON = dict(fn=balloon, mirror=True, dir='vintage', category='Vintage', fam={
     'gore': ['#e76f51', '#f4a261', '#e9c46a', '#2a9d8f', '#a8dadc'], 'flower': ['#e58ab8', '#f6d24a', '#9b6fd6'],
     'leaf': ['#6a994e', '#a7c957']})
 
+# ---------------- crowns and mandalas (art/crowns, high detail) ----------------
+HI = dict(dir='crowns', size=1400, close=0, min_area=150)
+CROWN_FAM = {
+    'gold': ['#e0b84a', '#c9a227', '#f2d57e'], 'velvet': ['#8e2c48', '#6b2d5c', '#1d4e89'],
+    'jewel': ['#c0392b', '#1d4e89', '#2e8b57', '#8e44ad', '#f2d57e'],
+}
+
+
+def crown_part(f):
+    A = f['area']
+    if A < 0.0003: return 'jewel'
+    return 'velvet' if A > 0.004 else 'gold'
+
+
+def crowns_sheet(f):
+    return crown_part(f)
+CROWNS = dict(HI, fn=crowns_sheet, mirror=False, category='Crowns', fam=CROWN_FAM)
+
+CROWN_POLY = [(0.44, 0.05), (0.56, 0.05), (0.6, 0.3), (0.85, 0.35), (0.92, 0.6), (0.9, 0.9), (0.1, 0.9), (0.08, 0.6), (0.15, 0.35), (0.4, 0.3)]
+
+
+def crown_mandala(f):
+    return crown_part(f) if pip(f['cx'], f['cy'], CROWN_POLY) else 'back'
+CROWN_MANDALA = dict(HI, fn=crown_mandala, mirror=True, category='Crowns', fam=dict(
+    CROWN_FAM, back=['#cfe3f5', '#b8d4ea', '#e3d5f0', '#d9ecd9', '#a9cbe6']))
+
+PAGE_POLY = [(0.45, 0.02), (0.55, 0.02), (0.6, 0.3), (0.95, 0.4), (0.98, 0.75), (0.95, 0.98), (0.05, 0.98), (0.02, 0.75), (0.05, 0.4), (0.4, 0.3)]
+
+
+def crown_page(f):
+    x, y = f['cx'], f['cy']
+    if pip(x, y, PAGE_POLY) and y > 0.3: return crown_part(f)
+    if abs(x - 0.5) < 0.08 and y < 0.35: return crown_part(f)
+    return 'leaf' if y < 0.5 and f['area'] > 0.0006 else 'back'
+CROWN_PAGE = dict(HI, fn=crown_page, mirror=True, category='Crowns', fam=dict(
+    CROWN_FAM, leaf=['#6a994e', '#a7c957', '#3f7d4e'], back=['#f7c6d6', '#e3d5f0', '#fbe3c4']))
+
+
+def stars_page(f):
+    A = f['area']
+    if A > 0.01: return 'sky'
+    return 'star' if A > 0.0008 else 'spark'
+STARS = dict(HI, fn=stars_page, mirror=False, category='Faith', fam={
+    'sky': ['#1f3163', '#2a4480'], 'star': ['#f2c14e', '#f6d98a', '#e9a23b', '#7fb3e0'], 'spark': ['#f6d98a', '#cfe3f5', '#9b6fd6']})
+
+
+def heart_mandala(f):
+    x, y = f['cx'], f['cy']
+    if heart_shape(x, y):
+        return 'centre' if math.hypot(x - 0.5, y - 0.5) < 0.03 else 'heart'
+    d = dc(f)
+    return 'ring1' if d < 0.35 else 'ring2' if d < 0.5 else 'ring3'
+heart_shape = lambda x, y: ((lambda u, v: (u * u + v * v - 1) ** 3 - u * u * v ** 3 <= 0)((x - 0.5) / 0.17, -(y - 0.5) / 0.17))
+HEART_MANDALA = dict(HI, fn=heart_mandala, mirror=True, category='Hearts', fam={
+    'centre': ['#f2c14e'], 'heart': ['#e63957', '#ff6f8a', '#ffc2cf'], 'ring1': ['#f7b2c9', '#c8a6ea', '#fbd3e0'],
+    'ring2': ['#9fd4c7', '#b8e0d2', '#c8a6ea'], 'ring3': ['#f6d98a', '#f2c14e', '#9fd4c7']})
+
 GARDEN = dict(dir='drawn', category='Gardens', plan=True)
 FAITH = dict(dir='drawn', category='Faith', plan=True)
 ANIMALS = dict(dir='drawn', category='Animals', plan=True)
@@ -208,6 +265,11 @@ PICS = [
     ('animal-lamb', 'Little Lamb', 'lamb', ANIMALS),
     ('animal-kitty', 'Ginger Kitty', 'kitty', ANIMALS),
     ('animal-butterfly', 'Butterfly', 'butterfly', ANIMALS),
+    ('crown-royal', 'Royal Crown', 'crown-page', CROWN_PAGE),
+    ('crown-mandala', 'Crown Mandala', 'crown-mandala', CROWN_MANDALA),
+    ('crown-collection', 'Crown Collection', 'crowns', CROWNS),
+    ('heart-mandala', 'Heart Mandala', 'heart-mandala', HEART_MANDALA),
+    ('faith-stars', 'Heavenly Stars', 'stars', STARS),
     ('vintage-rose-window', 'Rose Window', 'rose-window', ROSE),
     ('vintage-candlelight', 'Candlelight', 'candlelight', CANDLE),
     ('vintage-cross', 'Cross Medallion', 'cross-medallion', CROSS),
@@ -257,11 +319,12 @@ def colours_from_plan(plan_path, lab, R, max_colours=24):
 def process(pid, title, src, cfg):
     art = os.path.join(ROOT, 'art', cfg.get('dir', 'hearts'))
     im = Image.open(os.path.join(art, src + '.png')).convert('L')
-    s = SIZE / max(im.size)
+    s = cfg.get('size', SIZE) / max(im.size)
     im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
     g = np.array(im).astype(np.float32)
     H, W = g.shape
-    wall = ndi.binary_dilation(g < 175, iterations=1)
+    close = cfg.get('close', 1)
+    wall = ndi.binary_dilation(g < 175, iterations=close) if close else g < 175
     lab, n = ndi.label(~wall)
     border = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
     areas = ndi.sum(np.ones_like(lab), lab, index=np.arange(n + 1))
@@ -269,7 +332,7 @@ def process(pid, title, src, cfg):
     lab[outside] = 0
     # merge tiny regions into their most common neighbour
     grown = ndi.grey_dilation(lab, size=5)
-    small = [i for i in range(1, n + 1) if i not in border and areas[i] < MIN_AREA]
+    small = [i for i in range(1, n + 1) if i not in border and areas[i] < cfg.get('min_area', MIN_AREA)]
     objs = ndi.find_objects(lab)
     for i in small:
         sl = objs[i - 1]
