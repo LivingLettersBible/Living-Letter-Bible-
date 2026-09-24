@@ -52,7 +52,10 @@
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   };
   const inkFor = (hex) => (luminance(hex) > 0.6 ? '#2b2622' : '#ffffff');
-  const isDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = () => {
+    const theme = document.documentElement.dataset.theme;
+    return theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  };
   // Unpainted cells show as a gray whose lightness hints at the final colour.
   const emptyShade = (hex) => {
     const l = luminance(hex);
@@ -179,11 +182,13 @@
         del.innerHTML = ICON_X;
         del.onclick = (e) => {
           e.stopPropagation();
-          if (!confirm(`Delete "${pic.title}"?`)) return;
-          customs = customs.filter((c) => c.id !== pic.id);
-          store.set(CUSTOM_KEY, customs);
-          store.del(progressKey(pic.id));
-          renderGrid();
+          ask(`Delete "${pic.title}"?`, 'Delete').then((ok) => {
+            if (!ok) return;
+            customs = customs.filter((c) => c.id !== pic.id);
+            store.set(CUSTOM_KEY, customs);
+            store.del(progressKey(pic.id));
+            renderGrid();
+          });
         };
         card.appendChild(del);
       }
@@ -209,13 +214,23 @@
 
   // ---------- Routing ----------
 
+  // Embedded builds (e.g. inside another page's frame) route in memory
+  // instead of through the URL hash.
+  const EMBED = !!window.LC_EMBED;
+  let embedRoute = '';
+
   function go(id) {
-    location.hash = id ? '#/paint/' + encodeURIComponent(id) : '';
+    if (EMBED) {
+      embedRoute = id || '';
+      route();
+    } else {
+      location.hash = id ? '#/paint/' + encodeURIComponent(id) : '';
+    }
   }
 
   function route() {
-    const m = location.hash.match(/^#\/paint\/(.+)$/);
-    const pic = m && findPicture(decodeURIComponent(m[1]));
+    const m = EMBED ? [null, embedRoute] : location.hash.match(/^#\/paint\/(.+)$/);
+    const pic = m && m[1] && findPicture(decodeURIComponent(m[1]));
     if (pic) openEditor(pic);
     else showGallery();
   }
@@ -673,6 +688,32 @@
     stage.classList.toggle('panning', on);
   }
 
+  // ---------- In-page confirm / notice ----------
+
+  // Resolves true when confirmed. Without an okLabel it is a plain notice.
+  function ask(message, okLabel) {
+    const dlg = $('#askDlg');
+    $('#askMsg').textContent = message;
+    const ok = $('#askOk');
+    const cancel = $('#askCancel');
+    ok.textContent = okLabel || 'OK';
+    ok.classList.toggle('danger', !!okLabel);
+    cancel.hidden = !okLabel;
+    return new Promise((resolve) => {
+      const done = (value) => {
+        ok.onclick = cancel.onclick = null;
+        dlg.onclose = null;
+        if (dlg.open) dlg.close();
+        resolve(value);
+      };
+      ok.onclick = () => done(!!okLabel);
+      cancel.onclick = () => done(false);
+      dlg.onclose = () => done(false);
+      dlg.showModal();
+      ok.focus();
+    });
+  }
+
   // ---------- Toast ----------
 
   let toastTimer = 0;
@@ -708,9 +749,13 @@
     closeMenu();
     if (act === 'replay') openDone(false);
     if (act === 'download') downloadPng(ed.pic, ed.order);
-    if (act === 'restart' && confirm('Clear all color from this picture and start over?')) {
-      store.del(progressKey(ed.pic.id));
-      openEditor(ed.pic);
+    if (act === 'restart') {
+      const pic = ed.pic;
+      ask('Clear all color from this picture and start over?', 'Restart').then((ok) => {
+        if (!ok || !ed || ed.pic !== pic) return;
+        store.del(progressKey(pic.id));
+        openEditor(pic);
+      });
     }
   };
 
@@ -937,7 +982,7 @@
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      alert("Sorry, that image couldn't be opened.");
+      ask("That file couldn't be opened as an image. Try a JPEG or PNG photo.");
     };
     img.src = url;
   };
@@ -955,7 +1000,7 @@
     };
     const next = [pic, ...customs];
     if (!store.set(CUSTOM_KEY, next)) {
-      alert('Not enough storage space on this device to save the picture. Try deleting an old photo.');
+      ask('There isn\'t enough storage space on this device to save the picture. Delete an old photo, or lower the detail, then try again.');
       return;
     }
     customs = next;
@@ -978,19 +1023,23 @@
     clampView();
   }).observe(stage);
 
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  const onThemeChange = () => {
     refreshShades();
     requestDraw();
     if (!ed) route();
-  });
+  };
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onThemeChange);
+  new MutationObserver(onThemeChange).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   window.addEventListener('hashchange', route);
   window.addEventListener('pagehide', flushSave);
   document.addEventListener('visibilitychange', () => document.hidden && flushSave());
 
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  if (!EMBED && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+
+  if (EMBED) document.querySelectorAll('[data-act="download"]').forEach((b) => (b.hidden = true));
 
   route();
 })();
