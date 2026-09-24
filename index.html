@@ -24,10 +24,6 @@
           <p>Color by number</p>
         </div>
       </div>
-      <button id="importBtn" class="btn primary" type="button">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        Photo
-      </button>
     </header>
     <section id="daily" aria-label="Picture of the day"></section>
     <nav id="tabs" class="tabs" aria-label="Categories"></nav>
@@ -82,35 +78,6 @@
       <button type="button" class="btn" data-act="download">Download</button>
       <button type="button" class="btn primary" data-act="gallery">More pictures</button>
     </div>
-  </dialog>
-
-  <!-- Import dialog -->
-  <dialog id="importDlg" class="dlg">
-    <form method="dialog" id="importForm">
-      <h2>Color your own photo</h2>
-      <p class="muted">Pick a photo and we'll turn it into a color-by-number page. It stays on your device.</p>
-      <label class="file">
-        <input id="fileInput" type="file" accept="image/*">
-        <span>Choose photo…</span>
-      </label>
-      <canvas id="importPreview" class="replay" hidden></canvas>
-      <div class="field">
-        <label for="detail">Detail <output id="detailOut">40</output></label>
-        <input id="detail" type="range" min="20" max="64" step="2" value="40">
-      </div>
-      <div class="field">
-        <label for="colors">Colors <output id="colorsOut">12</output></label>
-        <input id="colors" type="range" min="4" max="24" value="12">
-      </div>
-      <div class="field">
-        <label for="importTitle">Name</label>
-        <input id="importTitle" type="text" maxlength="40" placeholder="My picture">
-      </div>
-      <div class="actions">
-        <button type="submit" class="btn" value="cancel">Cancel</button>
-        <button type="button" id="importCreate" class="btn primary" disabled>Create</button>
-      </div>
-    </form>
   </dialog>
 
   <!-- Confirm / notice dialog -->

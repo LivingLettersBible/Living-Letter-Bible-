@@ -1,27 +1,25 @@
 # Living Colors — Color by Number
 
 A relaxing color-by-number web app, similar to *Coloring Book – Color by Number* on the App Store.
-Pick a numbered color, tap (or drag across) the matching cells, and watch the picture come to life.
+Pick a numbered color, tap the matching areas of a line drawing, and watch the picture come to life.
 
 It's a plain static site: no build step, no dependencies, no server code.
 
 ## Features
 
-- **Line-art gardens:** Mushroom Garden, Wisteria Path, Garden Tea Party, Poppy Garden and Lantern Arbor
-- **Faith:** Sunrise Cross, Dove of Peace, Noah's Ark, Loaves and Fishes, Star of Bethlehem
-- **Animals:** Little Lamb, Ginger Kitty, Butterfly
-  (gardens, faith and animal pages are original drawings made by `tools/draw_pages.py`)
-- **Line-art hearts:** detailed coloring-book pages (Songbird, Harvest, Mountain, Ocean and Lace hearts).
-  Tap a numbered area to fill it, drag to move around, and pinch to zoom in on small areas
+- **18 line-art pages** in four categories:
+  - **Gardens:** Mushroom Garden, Wisteria Path, Garden Tea Party, Poppy Garden, Lantern Arbor
+  - **Hearts:** Songbird, Harvest, Mountain, Ocean and Lace hearts
+  - **Faith:** Sunrise Cross, Dove of Peace, Noah's Ark, Loaves and Fishes, Star of Bethlehem
+  - **Animals:** Little Lamb, Ginger Kitty, Butterfly
+
+  Gardens, Faith and Animals are original drawings made by `tools/draw_pages.py`.
 - **Picture of the day** on the home screen
 - **Tap to paint.** Areas of the selected color are highlighted, and numbers appear as you zoom in
-- **Zoom and pan:** pinch or two-finger drag on touch screens; scroll-wheel or trackpad pinch, and hold
-  <kbd>Space</kbd> (or use the move button) to drag on desktop
-- **Hint button** jumps to a cell you still need to paint
+- **Zoom and pan:** drag to move, pinch to zoom; scroll-wheel or trackpad pinch on desktop
+- **Hint button** jumps to an area you still need to paint
 - **Progress ring** on every color, which automatically moves to the next color when one is finished
 - **Completion celebration** with confetti, a time-lapse replay, and PNG download
-- **Color your own photo:** turns any image into a pixel-style color-by-number page (choose detail and number of colors).
-  Photos never leave the device
 - **Progress saves automatically** in the browser
 - **Installable app (PWA)** that works offline after the first visit, with light and dark mode
 
