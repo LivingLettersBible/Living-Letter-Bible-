@@ -66,6 +66,9 @@ button.primary { background: var(--accent); color: var(--accent-ink); border-col
 .ref { font-weight: 600; color: var(--accent); display: flex; gap: 10px; align-items: center; }
 .badge { font-size: 12px; font-weight: 400; background: #e9dcb9; color: #5c4515; padding: 1px 8px; border-radius: 10px; }
 #verseText { margin: 4px 0 0; font-size: 21px; line-height: 1.5; }
+#verseText.omitted { font-size: 16px; font-style: italic; color: var(--muted); }
+.credit { margin-top: 32px; text-align: center; font-size: 13px; color: var(--muted); }
+.credit a { color: inherit; }
 .nav-arrow { font-size: 28px; line-height: 1; padding: 0 10px; border: none; background: transparent; color: var(--muted); }
 .nav-arrow:hover { color: var(--accent); }
 

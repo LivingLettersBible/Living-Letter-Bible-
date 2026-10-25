@@ -1,15 +1,15 @@
 # Living Letters Bible
 
-> “Ye are our epistle written in our hearts, known and read of all men.” — 2 Corinthians 3:2
+> “You yourselves are our letter, inscribed on our hearts, known and read by everyone.” — 2 Corinthians 3:2 (BSB)
 
-Write the whole Bible by hand, one verse at a time, with a finger, a stylus (Apple Pencil, S Pen, Surface Pen) or a mouse.
+Write the whole Bible by hand, one verse at a time, in the **Berean Standard Bible (BSB)**. Use a finger, a stylus (Apple Pencil, S Pen, Surface Pen) or a mouse.
 
 ## Features
 
 - **Write**: pick a book, chapter and verse, read it, then copy it onto ruled paper. Pen pressure changes the stroke width. You get five ink colours, an adjustable nib, an eraser (including the eraser end of a stylus), undo and redo, and you can add or remove lines.
 - **Trace mode**: shows the verse faintly on the paper so you can write over it.
 - **Amen, next verse**: marks the verse as written and moves to the next one, across chapter and book boundaries.
-- **Progress**: tracks verses written overall, today, per book and per chapter (out of all 31,102 verses).
+- **Progress**: tracks verses written overall, today, per book and per chapter, out of all 31,086 verses in the BSB. The 16 traditional verse numbers the BSB omits (such as Matthew 17:21 and Acts 8:37) are skipped and not counted.
 - **My Pages**: shows a chapter in your own handwriting, ready to print.
 - **Stylus-only mode**: ignores finger and palm touches when you use a pen on a tablet.
 - **Backup / restore**: handwriting is stored on the device (IndexedDB). You can download a JSON backup and restore it on another device.
@@ -33,7 +33,7 @@ To install it on a phone or tablet, host the folder on any static host (for exam
 | `index.html` | Layout |
 | `styles.css` | Parchment theme and print styles |
 | `app.js` | Drawing, storage, navigation, progress, pages |
-| `data/kjv.js` | Full King James Version text (public domain) |
+| `data/bsb.js` | Full Berean Standard Bible text (public domain since April 2023) |
 | `sw.js`, `manifest.json`, `icon.svg` | Offline support and install metadata |
 
 Strokes are stored as vectors normalised to the page width, so a written page redraws sharply at any screen size.

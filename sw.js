@@ -1,6 +1,6 @@
 // Offline support: cache the app shell and Bible text; fonts are cached as they load.
-const CACHE = 'living-letters-v1';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'data/kjv.js', 'icon.svg', 'manifest.json'];
+const CACHE = 'living-letters-v2';
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'data/bsb.js', 'icon.svg', 'manifest.json'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

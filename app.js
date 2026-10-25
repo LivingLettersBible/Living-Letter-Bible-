@@ -1,8 +1,12 @@
 'use strict';
 
-const BIBLE = window.KJV; // [{ n: name, c: [[verse, ...], ...] }]
+const BIBLE = window.BSB; // [{ n: name, c: [[verse, ...], ...] }]; '' = verse omitted by the BSB
 const OT_BOOKS = 39;
-const TOTAL = BIBLE.reduce((s, b) => s + b.c.reduce((t, ch) => t + ch.length, 0), 0);
+const omitted = (b, c, v) => !BIBLE[b].c[c][v];
+const countIn = (ch) => ch.reduce((n, t) => n + (t ? 1 : 0), 0);
+const versesIn = (book) => book.c.reduce((n, ch) => n + countIn(ch), 0);
+const TOTAL = BIBLE.reduce((n, b) => n + versesIn(b), 0);
+const OMITTED_NOTE = 'This verse is not in the Berean Standard Bible. It is found only in later manuscripts, so the BSB leaves it out of the main text.';
 
 // Paper geometry, as fractions of the paper's width so pages scale to any screen.
 const LINE = 0.085;   // ruled line spacing (default; narrow screens get wider spacing)
@@ -21,7 +25,7 @@ const INKS = [
 
 const $ = (s) => document.querySelector(s);
 const key = (b, c, v) => `${b}.${c}.${v}`;
-const refOf = (b, c, v) => `${BIBLE[b].n} ${c + 1}:${v + 1}`;
+const refOf = (b, c, v) => `${BIBLE[b].n} ${c + 1}:${v + 1} · BSB`;
 const fmt = (n) => n.toLocaleString();
 
 // ---------- preferences (per-device conveniences) ----------
@@ -301,17 +305,24 @@ async function go(b, c, v) {
   layoutPaper();
 }
 
+function neighbour(pos, d) {
+  let { b, c, v } = pos;
+  do {
+    v += d;
+    if (v < 0) {
+      if (--c < 0) { if (--b < 0) return null; c = BIBLE[b].c.length - 1; }
+      v = BIBLE[b].c[c].length - 1;
+    } else if (v >= BIBLE[b].c[c].length) {
+      v = 0;
+      if (++c >= BIBLE[b].c.length) { c = 0; if (++b >= BIBLE.length) return null; }
+    }
+  } while (omitted(b, c, v));
+  return { b, c, v };
+}
+
 function step(d) {
-  let { b, c, v } = state;
-  v += d;
-  if (v < 0) {
-    if (--c < 0) { if (--b < 0) return; c = BIBLE[b].c.length - 1; }
-    v = BIBLE[b].c[c].length - 1;
-  } else if (v >= BIBLE[b].c[c].length) {
-    v = 0;
-    if (++c >= BIBLE[b].c.length) { c = 0; if (++b >= BIBLE.length) return; }
-  }
-  go(b, c, v);
+  const n = neighbour(state, d);
+  if (n) go(n.b, n.c, n.v);
 }
 
 function fillBookSelect(sel) {
@@ -323,9 +334,11 @@ function fillBookSelect(sel) {
     sel.append(g);
   });
 }
-function fillNumSelect(sel, n, prefix) {
+function fillNumSelect(sel, n, prefix, isOmitted) {
   sel.innerHTML = '';
-  for (let i = 0; i < n; i++) sel.append(new Option(`${prefix} ${i + 1}`, i));
+  for (let i = 0; i < n; i++) {
+    sel.append(new Option(`${prefix} ${i + 1}${isOmitted && isOmitted(i) ? ' (not in BSB)' : ''}`, i));
+  }
 }
 
 function renderVerse() {
@@ -333,15 +346,15 @@ function renderVerse() {
   $('#bookSel').value = b;
   fillNumSelect($('#chapSel'), BIBLE[b].c.length, 'Chapter');
   $('#chapSel').value = c;
-  fillNumSelect($('#verseSel'), BIBLE[b].c[c].length, 'Verse');
+  fillNumSelect($('#verseSel'), BIBLE[b].c[c].length, 'Verse', (i) => omitted(b, c, i));
   $('#verseSel').value = v;
   $('#refText').textContent = refOf(b, c, v);
-  $('#verseText').textContent = verseText();
+  $('#verseText').textContent = verseText() || OMITTED_NOTE;
+  $('#verseText').classList.toggle('omitted', omitted(b, c, v));
   const p = state.progress[key(b, c, v)];
   $('#doneBadge').hidden = !(p && p.d);
-  $('#prevBtn').disabled = b === 0 && c === 0 && v === 0;
-  const lb = BIBLE.length - 1;
-  $('#nextBtn').disabled = b === lb && c === BIBLE[lb].c.length - 1 && v === BIBLE[lb].c[c].length - 1;
+  $('#prevBtn').disabled = !neighbour(state, -1);
+  $('#nextBtn').disabled = !neighbour(state, 1);
   updateButtons();
 }
 
@@ -464,7 +477,7 @@ function refreshProgress() {
 let openBook = null;
 function renderProgress() {
   const { books, total, today } = counts();
-  const booksDone = books.filter((x, i) => x.done === BIBLE[i].c.reduce((s, ch) => s + ch.length, 0)).length;
+  const booksDone = books.filter((x, i) => x.done === versesIn(BIBLE[i])).length;
   $('#stats').innerHTML = '';
   for (const [n, label] of [[fmt(total), 'verses written'], [fmt(today), 'today'],
     [(total / TOTAL * 100).toFixed(2) + '%', 'of the Bible'], [booksDone, 'books complete']]) {
@@ -481,7 +494,7 @@ function renderProgress() {
 
 function bookCard(i, info) {
   const book = BIBLE[i];
-  const verses = book.c.reduce((s, ch) => s + ch.length, 0);
+  const verses = versesIn(book);
   const card = document.createElement('div');
   card.className = 'book' + (openBook === i ? ' open' : '');
   const head = document.createElement('button');
@@ -494,14 +507,14 @@ function bookCard(i, info) {
     const grid = document.createElement('div');
     grid.className = 'chapters';
     book.c.forEach((ch, c) => {
-      const f = info.chapters[c] / ch.length;
+      const f = info.chapters[c] / countIn(ch);
       const btn = document.createElement('button');
       btn.className = 'chap' + (f === 1 ? ' full' : '');
       btn.style.setProperty('--f', f);
       btn.textContent = c + 1;
-      btn.title = `Chapter ${c + 1}: ${info.chapters[c]} of ${ch.length} verses`;
+      btn.title = `Chapter ${c + 1}: ${info.chapters[c]} of ${countIn(ch)} verses`;
       btn.addEventListener('click', () => {
-        let v = ch.findIndex((_, vi) => !(state.progress[key(i, c, vi)] || {}).d);
+        let v = ch.findIndex((t, vi) => t && !(state.progress[key(i, c, vi)] || {}).d);
         if (v < 0) v = 0;
         show('write');
         go(i, c, v);
@@ -538,7 +551,7 @@ async function renderPages() {
   const dpr = Math.max(2, window.devicePixelRatio || 1); // crisp when printed
   let written = 0;
   recs.forEach((rec, v) => {
-    if (!rec && !$('#showMissing').checked) return;
+    if (omitted(b, c, v) || (!rec && !$('#showMissing').checked)) return;
     const row = document.createElement('div');
     row.className = 'pverse';
     row.innerHTML = `<span class="num">${v + 1}</span><div></div>`;
