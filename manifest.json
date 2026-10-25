@@ -1,0 +1,12 @@
+{
+  "name": "Living Letters Bible",
+  "short_name": "Living Letters",
+  "description": "Write the whole Bible by hand, one verse at a time.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4ecdc",
+  "theme_color": "#f4ecdc",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

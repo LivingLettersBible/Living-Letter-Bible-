@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4ecdc">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="description" content="Write the whole Bible by hand, one verse at a time.">
+  <title>Living Letters Bible</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="icon.svg" alt="" width="32" height="32">
+      <div>
+        <h1>Living Letters Bible</h1>
+        <p class="tagline">“Ye are our epistle written in our hearts” — 2 Cor 3:2</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="write" role="tab">Write</button>
+      <button class="tab" data-view="progress" role="tab">Progress</button>
+      <button class="tab" data-view="pages" role="tab">My Pages</button>
+      <button class="tab icon" id="settingsBtn" title="Settings &amp; backup" aria-label="Settings">⚙</button>
+    </nav>
+  </header>
+
+  <div class="overall">
+    <div class="bar"><span id="overallFill"></span></div>
+    <span id="overallText"></span>
+  </div>
+
+  <!-- WRITE -->
+  <main id="view-write" class="view">
+    <div class="picker">
+      <select id="bookSel" aria-label="Book"></select>
+      <select id="chapSel" aria-label="Chapter"></select>
+      <select id="verseSel" aria-label="Verse"></select>
+    </div>
+
+    <section class="verse-card">
+      <button class="nav-arrow" id="prevBtn" aria-label="Previous verse">‹</button>
+      <div class="verse-body">
+        <div class="ref"><span id="refText"></span><span id="doneBadge" class="badge" hidden>✓ written</span></div>
+        <p id="verseText"></p>
+      </div>
+      <button class="nav-arrow" id="nextBtn" aria-label="Next verse">›</button>
+    </section>
+
+    <div class="toolbar">
+      <div class="group" role="radiogroup" aria-label="Tool">
+        <button class="tool active" data-tool="pen" title="Pen (P)">✒ Pen</button>
+        <button class="tool" data-tool="eraser" title="Eraser (E)">⌫ Eraser</button>
+      </div>
+      <div class="group colors" id="colors" aria-label="Ink colour"></div>
+      <label class="group size">Nib <input type="range" id="sizeIn" min="1" max="8" step="0.5" value="2.5"></label>
+      <div class="group">
+        <button id="undoBtn" title="Undo (Ctrl+Z)">↶</button>
+        <button id="redoBtn" title="Redo (Ctrl+Shift+Z)">↷</button>
+        <button id="clearBtn" title="Clear page">Clear</button>
+      </div>
+      <div class="group">
+        <label class="check"><input type="checkbox" id="traceIn"> Trace</label>
+        <button id="lessLine" title="Remove a line">− line</button>
+        <button id="moreLine" title="Add a line">+ line</button>
+      </div>
+    </div>
+
+    <div class="paper" id="paper">
+      <canvas id="bg"></canvas>
+      <canvas id="ink"></canvas>
+    </div>
+
+    <div class="actions">
+      <span id="saveState" class="muted"></span>
+      <button class="primary" id="finishBtn">Amen — next verse →</button>
+    </div>
+  </main>
+
+  <!-- PROGRESS -->
+  <main id="view-progress" class="view" hidden>
+    <div class="stats" id="stats"></div>
+    <h2>Old Testament</h2>
+    <div class="books" id="otBooks"></div>
+    <h2>New Testament</h2>
+    <div class="books" id="ntBooks"></div>
+  </main>
+
+  <!-- PAGES -->
+  <main id="view-pages" class="view" hidden>
+    <div class="picker no-print">
+      <select id="pBookSel" aria-label="Book"></select>
+      <select id="pChapSel" aria-label="Chapter"></select>
+      <label class="check"><input type="checkbox" id="showMissing" checked> Show unwritten verses</label>
+      <button id="printBtn">Print chapter</button>
+    </div>
+    <article id="pageOut" class="page-out"></article>
+  </main>
+
+  <dialog id="settings">
+    <form method="dialog">
+      <h2>Settings</h2>
+      <label class="check"><input type="checkbox" id="penOnlyIn"> Stylus only (ignore finger &amp; palm touches)</label>
+      <p class="muted">Your handwriting is stored only on this device, in this browser. Back it up now and then.</p>
+      <div class="row">
+        <button type="button" id="exportBtn">Download backup</button>
+        <label class="button">Restore backup<input type="file" id="importIn" accept="application/json,.json" hidden></label>
+      </div>
+      <p id="backupMsg" class="muted"></p>
+      <div class="row end"><button value="close" class="primary">Done</button></div>
+    </form>
+  </dialog>
+
+  <script src="data/kjv.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
